@@ -720,109 +720,7 @@ body {
    BLOCKED MESSAGE
 ========================= */
 
-.blocked-message {
-  position: absolute;
 
-  right: 24px;
-  bottom: 24px;
-  left: 24px;
-
-  min-height: 56px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  gap: 18px;
-
-  padding: 8px 16px;
-
-  border-radius: 14px;
-
-
-
-  z-index: 5;
-
-  animation: blockedBarIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.blocked-message button {
-  height: 34px;
-
-  padding: 0 8px;
-
-  border: none;
-
-  background: transparent;
-
-  font-family: "Inter", sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-
-  cursor: pointer;
-
-  transition:
-    color 0.2s ease,
-    transform 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.blocked-message .unblock-button {
-  color: #9cc49d;
-  background-color: #245e26;
-  border-radius: 25px;
-  -webkit-border-radius: 25px;
-  -moz-border-radius: 25px;
-  -ms-border-radius: 25px;
-  -o-border-radius: 25px;
-  padding: 10px;
-   width: 100px;
-
-}
-
-.blocked-message .unblock-button:hover {
-  color: #ffffff;
-  transform: translateY(-2px);
-}
-
-.blocked-message .delete-chat-button {
-    color: #df9199;
-    background-color: #ac3e49;
-    border-radius: 25px;
-    -webkit-border-radius: 25px;
-    -moz-border-radius: 25px;
-    -ms-border-radius: 25px;
-    -o-border-radius: 25px;
-    padding: 10px;
-    width: 100px;
-}
-
-  .blocked-message .delete-chat-button:hover {
-    color: #ffffff;
-    transform: translateY(-2px);
-  }
-
-.blocked-message button:active {
-  transform: scale(0.94);
-}
-
-.blocked-message button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-@keyframes blockedBarIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.97);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
 /* =========================
    MESSAGES
@@ -2008,7 +1906,7 @@ body {
   color: #8b919d;
 }
 
-.chat-search-cancel {
+.chat-search-cancel{
   flex: 0 0 auto;
 
   padding: 0 4px;
@@ -2201,23 +2099,7 @@ body {
     max-width: 80%;
   }
 
-  .blocked-message {
-    right: 16px;
-    bottom: 16px;
-    left: 16px;
 
-    min-height: 52px;
-
-    gap: 14px;
-
-    padding: 8px 12px;
-
-    border-radius: 12px;
-  }
-
-  .blocked-message button {
-    font-size: 11px;
-  }
 }
 
 @media (max-width: 500px) {
