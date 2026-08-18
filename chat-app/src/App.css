@@ -333,14 +333,21 @@ body {
 
   border-radius: 50%;
   overflow: hidden;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   background-color: #78e378;
 }
-
+.sender {
+  position: absolute;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  margin: 16px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #78e378; 
+}
 .prof-pic span {
   color: white;
   font-size: 16px;

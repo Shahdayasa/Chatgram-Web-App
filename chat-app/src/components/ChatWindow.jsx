@@ -17,13 +17,45 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export function ChatWindow({ selectedUser, messages, onSend }) {
+  const currentUser = auth.currentUser;
   const [showMore, setShowMore] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
-
+  const [avatar, setAvatar] = useState("");
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loadingBlock, setLoadingBlock] = useState(false);
 
+  /*useEffect(() => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      console.log("No current user found.");
+      return;
+    }
+
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const userData = snapshot.data();
+
+          console.log("NAVBAR USER DATA:", userData);
+
+          setAvatar(userData.avatar || "");
+        }
+      },
+      (error) => {
+        console.error(
+          "Error loading Navbar user:",
+          error
+        );
+      }
+    
+    );
+    return () => unsubscribe();
+  }, []); */
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -41,8 +73,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     });
 
     return () => unsubscribe();
-  }, []);
-
+  }, []); 
   const isBlocked = selectedUser
     ? blockedUsers.includes(selectedUser.id)
     : false;
@@ -115,6 +146,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
   }
 
   return (
+    
     <div className="chat-window">
 
       {showSearch ? (
@@ -282,7 +314,6 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             }
           >
             <p>{message.text}</p>
-
             <span>
               {message.createdAt?.toDate
                 ? message.createdAt
@@ -293,28 +324,18 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                     })
                 : ""}
             </span>
+
+
+            
           </div>
+
+          
         ))}
-
-        {isBlocked ? (
-          <div className="blocked-message">
-
-            <button
-              type="button"
-              className="unblock-button"
-              onClick={handleBlockToggle}
-              disabled={loadingBlock}
-            >
-              {loadingBlock ? "Please wait..." : "Unblock"}
-            </button>
-
-          </div>
-        ) : (
-          <MessageInput onSend={handleSend} />
-        )}
+     <MessageInput onSend={handleSend} />
 
       </div>
 
+      
     </div>
   );
 }

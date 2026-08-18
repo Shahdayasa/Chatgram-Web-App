@@ -48,6 +48,8 @@ export function MessageInput({ onSend }) {
           />
         </svg>
       </button>
+
+      
     </form>
   );
 }

@@ -16,6 +16,8 @@ import { faSquarePlus } from "@fortawesome/free-regular-svg-icons";
 import {
   faMagnifyingGlass,
   faXmark,
+  faPen,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 export function Navbar({
@@ -26,30 +28,48 @@ export function Navbar({
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Contacts
   const [showContacts, setShowContacts] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
 
-  // Current user
   const [avatar, setAvatar] = useState("");
   const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+
+  const [editingName, setEditingName] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "",
+  });
+
   const avatarInputRef = useRef(null);
 
-  /* =========================
-     CURRENT USER
-  ========================= */
+  const showToast = (message, type) => {
+    setToast({
+      show: true,
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast({
+        show: false,
+        message: "",
+        type: "",
+      });
+    }, 4000);
+  };
 
   useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      console.log("No current user found.");
       return;
     }
 
@@ -61,29 +81,18 @@ export function Navbar({
         if (snapshot.exists()) {
           const userData = snapshot.data();
 
-          console.log("NAVBAR USER DATA:", userData);
-
           setAvatar(userData.avatar || "");
           setUserName(userData.name || "");
-          setUserEmail(
-            userData.email || currentUser.email || ""
-          );
+          setNewUserName(userData.name || "");
         }
       },
       (error) => {
-        console.error(
-          "Error loading Navbar user:",
-          error
-        );
+        console.error("Error loading Navbar user:", error);
       }
     );
 
     return () => unsubscribe();
   }, []);
-
-  /* =========================
-     CHANGE AVATAR
-  ========================= */
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
@@ -91,13 +100,13 @@ export function Navbar({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please choose an image file.");
+      showToast("Please choose an image file.", "error");
       e.target.value = "";
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5 MB.");
+      showToast("Image must be less than 5 MB.", "error");
       e.target.value = "";
       return;
     }
@@ -105,7 +114,7 @@ export function Navbar({
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      alert("You must be logged in.");
+      showToast("You must be logged in.", "error");
       return;
     }
 
@@ -127,12 +136,9 @@ export function Navbar({
 
       const data = await response.json();
 
-      console.log("Cloudinary response:", data);
-
       if (!response.ok) {
         throw new Error(
-          data.error?.message ||
-            "Cloudinary upload failed"
+          data.error?.message || "Cloudinary upload failed"
         );
       }
 
@@ -148,19 +154,16 @@ export function Navbar({
         }
       );
 
-      console.log("Avatar updated successfully!");
-
-      alert(
-        "Profile picture updated successfully!"
+      showToast(
+        "Profile picture updated successfully!",
+        "success"
       );
     } catch (error) {
-      console.error(
-        "Error changing avatar:",
-        error
-      );
+      console.error("Error changing avatar:", error);
 
-      alert(
-        "Failed to update profile picture."
+      showToast(
+        "Failed to update profile picture.",
+        "error"
       );
     } finally {
       setUploadingAvatar(false);
@@ -168,22 +171,80 @@ export function Navbar({
     }
   };
 
-  /* =========================
-     LOAD ALL CONTACTS
-  ========================= */
+  const handleEditName = () => {
+    setNewUserName(userName);
+    setEditingName(true);
+  };
+
+  const handleCancelEditName = () => {
+    setNewUserName(userName);
+    setEditingName(false);
+  };
+
+  const handleSaveName = async () => {
+    const currentUser = auth.currentUser;
+
+    const trimmedName = newUserName.trim();
+
+    if (!currentUser) {
+      showToast("You must be logged in.", "error");
+      return;
+    }
+
+    if (!trimmedName) {
+      showToast("Name cannot be empty.", "error");
+      return;
+    }
+
+    if (trimmedName.length < 2) {
+      showToast("Name must contain at least 2 characters.", "error");
+      return;
+    }
+
+    try {
+      setSavingName(true);
+
+      await setDoc(
+        doc(db, "users", currentUser.uid),
+        {
+          name: trimmedName,
+        },
+        {
+          merge: true,
+        }
+      );
+
+      setUserName(trimmedName);
+      setNewUserName(trimmedName);
+      setEditingName(false);
+
+      showToast(
+        "Username updated successfully!",
+        "success"
+      );
+    } catch (error) {
+      console.error("Error updating username:", error);
+
+      showToast(
+        "Failed to update username.",
+        "error"
+      );
+    } finally {
+      setSavingName(false);
+    }
+  };
 
   const handleAddContact = async () => {
     try {
       const currentUser = auth.currentUser;
 
       if (!currentUser) {
-        alert("You must be logged in.");
+        showToast("You must be logged in.", "error");
         return;
       }
 
       setLoadingContacts(true);
 
-      // Get every user from Firestore
       const usersSnapshot = await getDocs(
         collection(db, "users")
       );
@@ -201,65 +262,42 @@ export function Navbar({
         );
 
       setContacts(users);
-
-      // Open contacts modal
       setShowContacts(true);
-
-      // Close side menu
       setShowMenu(false);
     } catch (error) {
-      console.error(
-        "Error loading contacts:",
-        error
-      );
+      console.error("Error loading contacts:", error);
 
-      alert("Failed to load contacts.");
+      showToast(
+        "Failed to load contacts.",
+        "error"
+      );
     } finally {
       setLoadingContacts(false);
     }
   };
 
- 
+  const filteredContacts = contacts.filter((contact) => {
+    const search = contactSearch.toLowerCase().trim();
 
-  const filteredContacts = contacts.filter(
-    (contact) => {
-      const search =
-        contactSearch.toLowerCase().trim();
+    if (!search) return true;
 
-      if (!search) return true;
+    const name = contact.name?.toLowerCase() || "";
+    const email = contact.email?.toLowerCase() || "";
 
-      const name =
-        contact.name?.toLowerCase() || "";
+    return (
+      name.includes(search) ||
+      email.includes(search)
+    );
+  });
 
-      const email =
-        contact.email?.toLowerCase() || "";
+  const handleSelectContact = (contact) => {
+    onSelectUser(contact);
 
-      return (
-        name.includes(search) ||
-        email.includes(search)
-      );
-    }
-  );
+    setShowContacts(false);
+    setContactSearch("");
+    setShowMenu(false);
+  };
 
- 
-
- const handleSelectContact = (contact) => {
-  console.log("Selected contact:", contact);
-
-  // Open this user's chat
-  onSelectUser(contact);
-
-  // Close contacts modal
-  setShowContacts(false);
-
-  // Clear search
-  setContactSearch("");
-
-  // Close side menu
-  setShowMenu(false);
-};
-
- 
   const handleLogout = async () => {
     const currentUser = auth.currentUser;
 
@@ -290,16 +328,34 @@ export function Navbar({
       setShowContacts(false);
       setContactSearch("");
     } catch (error) {
-      console.error(
-        "Error logging out:",
-        error
+      console.error("Error logging out:", error);
+
+      showToast(
+        "Failed to log out.",
+        "error"
       );
     }
   };
 
   return (
     <>
-      
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-icon">
+            {toast.type === "success" ? "✓" : "×"}
+          </div>
+
+          <div className="toast-content">
+            <strong>
+              {toast.type === "success"
+                ? "Success"
+                : "Error"}
+            </strong>
+
+            <p>{toast.message}</p>
+          </div>
+        </div>
+      )}
 
       <nav className="navbar">
         <button
@@ -381,20 +437,14 @@ export function Navbar({
         </div>
       </nav>
 
-    
-
       {showMenu && (
         <>
           <div
             className="side-nav-overlay"
-            onClick={() => {
-              setShowMenu(false);
-            }}
+            onClick={() => setShowMenu(false)}
           />
 
           <aside className="side-nav">
-            {/* SIDE MENU HEADER */}
-
             <div className="side-nav-header">
               <h2>WhatsApp</h2>
 
@@ -409,8 +459,6 @@ export function Navbar({
                 />
               </button>
             </div>
-
-           
 
             <div className="side-nav-user">
               <div
@@ -427,8 +475,8 @@ export function Navbar({
                   />
                 ) : (
                   <div className="profile-avatar-placeholder">
-                    {(userName || userEmail)
-                      ?.charAt(0)
+                    {(userName || "U")
+                      .charAt(0)
                       .toUpperCase()}
                   </div>
                 )}
@@ -494,11 +542,51 @@ export function Navbar({
               />
 
               <div className="user-info">
-                <p>{userName}</p>
+                {editingName ? (
+                  <div className="edit-name-container">
+                    <input
+                      type="text"
+                      value={newUserName}
+                      onChange={(e) =>
+                        setNewUserName(e.target.value)
+                      }
+                      autoFocus
+                      disabled={savingName}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleSaveName}
+                      disabled={savingName}
+                      aria-label="Save name"
+                    >
+                      <FontAwesomeIcon icon={faCheck} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCancelEditName}
+                      disabled={savingName}
+                      aria-label="Cancel editing"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="user-name-display">
+                    <p>{userName}</p>
+
+                    <button
+                      type="button"
+                      onClick={handleEditName}
+                      aria-label="Edit username"
+                    >
+                      <FontAwesomeIcon icon={faPen} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* LOGOUT */}
 
             <button
               className="side-nav-logout"
@@ -513,20 +601,17 @@ export function Navbar({
         </>
       )}
 
-  
       {showContacts && (
         <>
-      <div
-  className="contacts-modal-overlay"
-  onClick={() => {
-    setShowContacts(false);
-    setContactSearch("");
-  }}
-/>
+          <div
+            className="contacts-modal-overlay"
+            onClick={() => {
+              setShowContacts(false);
+              setContactSearch("");
+            }}
+          />
 
           <div className="contacts-modal">
-            {/* HEADER */}
-
             <div className="contacts-header">
               <div>
                 <h2>Add new contact</h2>
@@ -546,13 +631,9 @@ export function Navbar({
                 }}
                 aria-label="Close contacts"
               >
-                <FontAwesomeIcon
-                  icon={faXmark}
-                />
+                <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
-
-            {/* SEARCH */}
 
             <div className="contacts-search">
               <FontAwesomeIcon
@@ -564,15 +645,11 @@ export function Navbar({
                 placeholder="Search users..."
                 value={contactSearch}
                 onChange={(e) =>
-                  setContactSearch(
-                    e.target.value
-                  )
+                  setContactSearch(e.target.value)
                 }
                 autoFocus
               />
             </div>
-
-            {/* CONTACTS */}
 
             <div className="contacts-list">
               {loadingContacts ? (
@@ -580,52 +657,45 @@ export function Navbar({
                   Loading contacts...
                 </div>
               ) : filteredContacts.length > 0 ? (
-                filteredContacts.map(
-                  (contact) => (
-                    <button
-                      key={contact.id}
-                      className="contact-item"
-                      onClick={() =>
-                        handleSelectContact(
-                          contact
-                        )
-                      }
-                    >
-                      {contact.avatar ? (
-                        <img
-                          src={contact.avatar}
-                          alt={contact.name}
-                          className="contact-avatar"
-                        />
-                      ) : (
-                        <div className="contact-avatar-placeholder">
-                          {(
-                            contact.name ||
-                            "U"
-                          )
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                      )}
-
-                      <div className="contact-info">
-                        <strong>
-                          {contact.name}
-                        </strong>
-
-                        <span>
-                          {contact.email}
-                        </span>
+                filteredContacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    className="contact-item"
+                    onClick={() =>
+                      handleSelectContact(contact)
+                    }
+                  >
+                    {contact.avatar ? (
+                      <img
+                        src={contact.avatar}
+                        alt={contact.name}
+                        className="contact-avatar"
+                      />
+                    ) : (
+                      <div className="contact-avatar-placeholder">
+                        {(contact.name || "U")
+                          .charAt(0)
+                          .toUpperCase()}
                       </div>
+                    )}
 
-                      {contact.isOnline && (
-                        <span className="contact-status online">
-                          Online
-                        </span>
-                      )}
-                    </button>
-                  )
-                )
+                    <div className="contact-info">
+                      <strong>
+                        {contact.name}
+                      </strong>
+
+                      <span>
+                        {contact.email}
+                      </span>
+                    </div>
+
+                    {contact.isOnline && (
+                      <span className="contact-status online">
+                        Online
+                      </span>
+                    )}
+                  </button>
+                ))
               ) : (
                 <div className="no-contacts">
                   <div className="no-contacts-icon">
@@ -634,9 +704,7 @@ export function Navbar({
                     />
                   </div>
 
-                  <h3>
-                    No users found
-                  </h3>
+                  <h3>No users found</h3>
 
                   <p>
                     Try another name or email.
@@ -648,7 +716,6 @@ export function Navbar({
         </>
       )}
 
-    
       {showLogoutConfirm && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
