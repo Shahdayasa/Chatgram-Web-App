@@ -12,8 +12,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
   const [showMore, setShowMore] = useState(false);
   const [showSearch ,setShowSearch] = useState(false);
   const [chatSearch,setChatSearch] = useState("");
-
-  const filteredMessages= messages.filter((message) => {
+    const filteredMessages= messages.filter((message) => {
     const search = chatSearch.toLocaleLowerCase().trim();
 
     if(!search) {
