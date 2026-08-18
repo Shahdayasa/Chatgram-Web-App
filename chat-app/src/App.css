@@ -28,9 +28,7 @@ body {
   box-sizing: border-box;
 }
 
-/* =========================
-   MAIN LAYOUT
-========================= */
+
 
 .container {
   display: flex;
@@ -56,9 +54,7 @@ body {
   overflow: hidden;
 }
 
-/* =========================
-   AUTH
-========================= */
+
 
 .create-account,
 .login-container {
@@ -178,9 +174,7 @@ body {
   background-color: #f5f8fc;
 }
 
-/* =========================
-   TOAST
-========================= */
+
 
 .toast {
   position: fixed;
@@ -233,9 +227,7 @@ body {
   color: #f71735;
 }
 
-/* =========================
-   NAVBAR
-========================= */
+
 
 .navbar {
   width: 100%;
@@ -301,9 +293,7 @@ body {
   font-size: 15px;
 }
 
-/* =========================
-   CHAT LIST
-========================= */
+
 
 .chat-list {
   width: 100%;
@@ -403,9 +393,7 @@ body {
   font-size: 12px;
 }
 
-/* =========================
-   CHAT WINDOW
-========================= */
+
 
 .chat-window {
   width: 100%;
@@ -486,10 +474,6 @@ body {
 
   background-color: #78e378;
 }
-/* =========================
-   CHAT HEADER BUTTONS
-   NO BLUE BACKGROUND
-========================= */
 
 .additional {
   display: flex;
@@ -531,7 +515,6 @@ body {
   -o-transition:    background-color 0.2s ease,    color 0.2s ease,    transform 0.15s ease;
 }
 
-/* Search + More hover */
 
 .chat-search-button:hover,
 .chat-more-button:hover {
@@ -541,14 +524,12 @@ body {
   color: #4caf50;
 }
 
-/* Phone hover */
 
 .chat-phone-button:hover {
   background: #f1f5f4 !important;
   background-color: #f1f5f4 !important;
 }
 
-/* Active */
 
 .chat-search-button:active,
 .chat-phone-button:active,
@@ -559,7 +540,6 @@ body {
   background-color: transparent !important;
 }
 
-/* Remove focus blue background/outline */
 
 .chat-search-button:focus,
 .chat-phone-button:focus,
@@ -569,7 +549,6 @@ body {
   background-color: transparent !important;
 }
 
-/* Search icon */
 
 .chat-search-button svg {
   width: 18px !important;
@@ -581,7 +560,6 @@ body {
   display: block;
 }
 
-/* Phone icon */
 
 .chat-phone-button svg {
   width: 30px !important;
@@ -590,9 +568,7 @@ body {
   display: block;
 }
 
-/* =========================
-   MORE BUTTON
-========================= */
+
 
 .chat-more-wrapper {
   position: relative;
@@ -621,9 +597,6 @@ body {
   color: currentColor;
 }
 
-/* =========================
-   MORE MENU
-========================= */
 
 .chat-more-menu {
   position: absolute;
@@ -719,15 +692,7 @@ body {
   }
 }
 
-/* =========================
-   BLOCKED MESSAGE
-========================= */
 
-
-
-/* =========================
-   MESSAGES
-========================= */
 
 .messages {
   position: relative;
@@ -799,9 +764,7 @@ body {
   opacity: 0.7;
 }
 
-/* =========================
-   MESSAGE INPUT
-========================= */
+
 
 .message-input {
   position: absolute;
@@ -843,9 +806,7 @@ body {
   cursor: pointer;
 }
 
-/* =========================
-   EMPTY CHAT
-========================= */
+
 
 .empty-chat {
   align-items: center;
@@ -891,9 +852,7 @@ body {
   font-size: 14px;
 }
 
-/* =========================
-   SIDE NAV
-========================= */
+
 
 .side-nav-overlay {
   position: fixed;
@@ -1060,9 +1019,7 @@ body {
   color: #e53935;
 }
 
-/* =========================
-   SIDE NAV USER
-========================= */
+
 
 .side-nav-user {
   display: flex;
@@ -1111,9 +1068,7 @@ body {
   white-space: nowrap;
 }
 
-/* =========================
-   PROFILE IMAGE
-========================= */
+
 
 .profile-image-wrapper {
   width: 50px;
@@ -1129,84 +1084,7 @@ body {
 
   flex-shrink: 0;
 }
-/*
-.blocked-message {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  left: 24px;
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 8px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow:
-    0 6px 20px rgba(1, 22, 39, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  z-index: 5;
-  animation: blockedBarIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
 
-.blocked-message button {
-  height: 34px;
-  padding: 0 8px;
-  border: none;
-  background: transparent;
-  font-family: "Inter", sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    color 0.2s ease,
-    transform 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.blocked-message .unblock-button {
-  color: #4caf50;
-}
-
-.blocked-message .unblock-button:hover {
-  color: #2e8b32;
-  transform: translateY(-2px);
-}
-
-.blocked-message .delete-chat-button {
-  color: #e05a67;
-}
-
-.blocked-message .delete-chat-button:hover {
-  color: #d93644;
-  transform: translateY(-2px);
-}
-
-.blocked-message button:active {
-  transform: scale(0.94);
-}
-
-.blocked-message button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-@keyframes blockedBarIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.97);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}*/
 .profile-image-wrapper .profile-avatar {
   width: 100%;
   height: 100%;
@@ -1267,9 +1145,7 @@ body {
   transform: scale(1.15);
 }
 
-/* =========================
-   AVATAR UPLOAD
-========================= */
+
 
 .avatar-upload {
   display: flex;
@@ -1346,9 +1222,7 @@ body {
   cursor: not-allowed;
 }
 
-/* =========================
-   LOGOUT
-========================= */
+
 
 .side-nav-logout {
   width: 100%;
@@ -1384,9 +1258,7 @@ body {
   color: #d93644;
 }
 
-/* =========================
-   CONFIRM LOGOUT
-========================= */
+
 
 .confirm-overlay {
   position: fixed;
@@ -1468,9 +1340,7 @@ body {
   background-color: #cf3c48;
 }
 
-/* =========================
-   CONTACTS MODAL
-========================= */
+
 
 .contacts-modal-overlay {
   position: fixed;
@@ -1578,9 +1448,7 @@ body {
   transform: scale(0.9);
 }
 
-/* =========================
-   CONTACT SEARCH
-========================= */
+
 
 .contacts-modal .contacts-search {
   width: 100%;
@@ -1650,9 +1518,7 @@ body {
   color: #9aa2b1;
 }
 
-/* =========================
-   CONTACT LIST
-========================= */
+
 
 .contacts-modal .contacts-list {
   flex: 1;
@@ -1801,9 +1667,6 @@ body {
   font-weight: 600;
 }
 
-/* =========================
-   CHAT SEARCH
-========================= */
 
 .chat-search {
   width: 220px;
@@ -1890,9 +1753,7 @@ body {
   }
 }
 
-/* =========================
-   CHAT SEARCH HEADER
-========================= */
+
 
 .chat-search-header {
   width: 100%;
@@ -2012,9 +1873,7 @@ body {
   color: #388e3c;
 }
 
-/* =========================
-   SEARCH RESULTS
-========================= */
+
 
 .no-message-results {
   width: 100%;
@@ -2032,9 +1891,7 @@ body {
   text-align: center;
 }
 
-/* =========================
-   CONTACT ANIMATIONS
-========================= */
+
 
 @keyframes contactsModalOpen {
   from {
@@ -2058,9 +1915,6 @@ body {
   }
 }
 
-/* =========================
-   LOADING / EMPTY CONTACTS
-========================= */
 
 .contacts-loading {
   height: 150px;
@@ -2121,9 +1975,6 @@ body {
   font-size: 12px;
 }
 
-/* =========================
-   RESPONSIVE
-========================= */
 
 @media (max-width: 680px) {
   .container {

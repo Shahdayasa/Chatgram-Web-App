@@ -1,55 +1,119 @@
 import { useEffect, useState } from "react";
 import { MessageInput } from "./MessageInput";
-import { auth,db } from "../firebase/firebase";
+import { auth, db } from "../firebase/firebase";
+
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+} from "firebase/firestore";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMagnifyingGlass,
   faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
-import { doc, onSnapshot } from "firebase/firestore";
 
 export function ChatWindow({ selectedUser, messages, onSend }) {
-    const [showMore, setShowMore] = useState(false);
-    const [showSearch ,setShowSearch] = useState(false);
-    const [chatSearch,setChatSearch] = useState("");
-    const [blockedUsers, setBlockedUsers] = useState([]);
-    // const [loadingBlock,setLoadingBlock]=useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
 
-    useEffect(()=>{
-      const currentUser = auth.currentUser;
-      
-      if(!currentUser) return ;
-      const userRef = doc(db,"users",currentUser.uid);
+  // Store the IDs of blocked users
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
-      const unsubscribe = onSnapshot (userRef, (snapshot)=>{
-        if(snapshot.exists()){
-          const data = snapshot.data();
+  // Prevent multiple block requests
+  const [loadingBlock, setLoadingBlock] = useState(false);
 
-          setBlockedUsers(data.blockedUsers || []);
-        }
-        else {
-          setBlockedUsers([]);
-        }
-        });
-        return () => unsubscribe();
-      
-    },[]);
+  // Get the current user's blocked users
+  useEffect(() => {
+    const currentUser = auth.currentUser;
 
-    const filteredMessages= messages.filter((message) => {
-    const search = chatSearch.toLocaleLowerCase().trim();
+    if (!currentUser) return;
 
-    if(!search) {
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+
+        // Get blockedUsers or use an empty array
+        setBlockedUsers(data.blockedUsers || []);
+      } else {
+        setBlockedUsers([]);
+      }
+    });
+
+    // Stop listening when component is removed
+    return () => unsubscribe();
+  }, []);
+
+  // Check if the selected user is blocked
+  const isBlocked = selectedUser
+    ? blockedUsers.includes(selectedUser.id)
+    : false;
+
+  // Filter messages according to search text
+  const filteredMessages = messages.filter((message) => {
+    const search = chatSearch.toLowerCase().trim();
+
+    if (!search) {
       return true;
     }
 
-    return message.text?.toLocaleLowerCase().includes(search);
+    return message.text?.toLowerCase().includes(search);
   });
 
+  // Close the search
   const closeSearch = () => {
     setShowSearch(false);
     setChatSearch("");
   };
+
+  // Block or unblock the selected user
+  const handleBlockToggle = async () => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser || !selectedUser || loadingBlock) {
+      return;
+    }
+
+    try {
+      setLoadingBlock(true);
+
+      const userRef = doc(db, "users", currentUser.uid);
+
+      if (isBlocked) {
+        // Remove user from blocked list
+        await updateDoc(userRef, {
+          blockedUsers: arrayRemove(selectedUser.id),
+        });
+      } else {
+        // Add user to blocked list
+        await updateDoc(userRef, {
+          blockedUsers: arrayUnion(selectedUser.id),
+        });
+      }
+
+     
+      setShowMore(false);
+    } catch (error) {
+      console.error("Error updating block status:", error);
+    } finally {
+      setLoadingBlock(false);
+    }
+  };
+
+  const handleSend = (text) => {
+    if (isBlocked) {
+      return;
+    }
+
+    onSend(text);
+  };
+
   if (!selectedUser) {
     return (
       <div className="chat-window empty-chat">
@@ -66,165 +130,194 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     );
   }
 
-return (
-  <div className="chat-window">
+  return (
+    <div className="chat-window">
 
-    {showSearch ? (
+      {showSearch ? (
 
-      <div className="chat-search-header">
+        <div className="chat-search-header">
 
-        <div className="chat-search-box">
+          <div className="chat-search-box">
 
-          <FontAwesomeIcon icon={faMagnifyingGlass} />
-
-          <input
-            type="text"
-            placeholder="Search"
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            autoFocus
-          />
-
-        </div>
-
-        <button
-          className="chat-search-cancel"
-          onClick={closeSearch}
-          type="button"
-        >
-          Cancel
-        </button>
-
-      </div>
-
-    ) : (
-
-      <div className="chat-header">
-
-        <div className="prof-name-seen">
-
-          <div className="prof-pic">
-
-            {selectedUser.avatar ? (
-              <img
-                src={selectedUser.avatar}
-                alt={`${selectedUser.name}'s avatar`}
-                className="profile-avatar"
-              />
-            ) : (
-              <span>
-                {selectedUser.name?.charAt(0).toUpperCase()}
-              </span>
-            )}
-
-          </div>
-
-          <div className="name-status">
-
-            <h3>{selectedUser.name}</h3>
-
-            <p>
-              {selectedUser.isOnline ? "Online" : "Offline"}
-            </p>
-
-          </div>
-
-        </div>
-
-        <div className="additional">
-
-          
-          <button
-            className="chat-search-button"
-            type="button"
-            onClick={() => setShowSearch(true)}
-          >
             <FontAwesomeIcon icon={faMagnifyingGlass} />
-          </button>
 
+            <input
+              type="text"
+              placeholder="Search"
+              value={chatSearch}
+              onChange={(e) => setChatSearch(e.target.value)}
+              autoFocus
+            />
 
-     
+          </div>
+
           <button
-            className="chat-phone-button"
-            aria-label="Call"
+            className="chat-search-cancle"
+            onClick={closeSearch}
             type="button"
           >
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 40 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M15.772 10.439L16.848 10.095C17.858 9.77299 18.935 10.294 19.368 11.312L20.227 13.34C20.601 14.223 20.394 15.262 19.713 15.908L17.819 17.706C17.935 18.782 18.297 19.841 18.903 20.883C19.4788 21.8912 20.251 22.7736 21.174 23.478L23.449 22.718C24.312 22.431 25.251 22.762 25.779 23.539L27.012 25.349C27.627 26.253 27.517 27.499 26.754 28.265L25.936 29.086C25.122 29.903 23.959 30.2 22.884 29.864C20.345 29.072 18.011 26.721 15.881 22.811C13.748 18.895 12.995 15.571 13.623 12.843C13.887 11.695 14.704 10.78 15.772 10.439Z"
-                fill="#707991"
-              />
-            </svg>
+            Cancel
           </button>
 
+        </div>
 
-          <div className="chat-more-wrapper">
+      ) : (
 
+        <div className="chat-header">
+
+          <div className="prof-name-seen">
+
+            <div className="prof-pic">
+
+              {selectedUser.avatar ? (
+                <img
+                  src={selectedUser.avatar}
+                  alt={`${selectedUser.name}'s avatar`}
+                  className="profile-avatar"
+                />
+              ) : (
+                <span>
+                  {selectedUser.name?.charAt(0).toUpperCase()}
+                </span>
+              )}
+
+            </div>
+
+            <div className="name-status">
+
+              <h3>{selectedUser.name}</h3>
+
+              <p>
+                {isBlocked
+                  ? "Blocked"
+                  : selectedUser.isOnline
+                  ? "Online"
+                  : "Offline"}
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="additional">
+
+         
             <button
-              className="chat-more-button"
+              className="chat-search-button"
               type="button"
-              onClick={() => setShowMore((prev) => !prev)}
+              onClick={() => setShowSearch(true)}
             >
-              <FontAwesomeIcon icon={faEllipsisVertical} />
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
 
-            {showMore && (
-              <div className="chat-more-menu">
+            <button
+              className="chat-phone-button"
+              aria-label="Call"
+              type="button"
+            >
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 40 40"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15.772 10.439L16.848 10.095C17.858 9.77299 18.935 10.294 19.368 11.312L20.227 13.34C20.601 14.223 20.394 15.262 19.713 15.908L17.819 17.706C17.935 18.782 18.297 19.841 18.903 20.883C19.4788 21.8912 20.251 22.7736 21.174 23.478L23.449 22.718C24.312 22.431 25.251 22.762 25.779 23.539L27.012 25.349C27.627 26.253 27.517 27.499 26.754 28.265L25.936 29.086C25.122 29.903 23.959 30.2 22.884 29.864C20.345 29.072 18.011 26.721 15.881 22.811C13.748 18.895 12.995 15.571 13.623 12.843C13.887 11.695 14.704 10.78 15.772 10.439Z"
+                  fill="#707991"
+                />
+              </svg>
+            </button>
 
-                <button type="button">
-                  More options
-                </button>
+            <div className="chat-more-wrapper">
 
-              </div>
-            )}
+              <button
+                className="chat-more-button"
+                type="button"
+                onClick={() => setShowMore((prev) => !prev)}
+              >
+                <FontAwesomeIcon icon={faEllipsisVertical} />
+              </button>
+
+              {showMore && (
+                <div className="chat-more-menu">
+
+                  <button
+                    type="button"
+                    onClick={handleBlockToggle}
+                    disabled={loadingBlock}
+                  >
+                    {loadingBlock
+                      ? "Please wait..."
+                      : isBlocked
+                      ? "Unblock User"
+                      : "Block User"}
+                  </button>
+
+                </div>
+              )}
+
+            </div>
 
           </div>
 
         </div>
 
+      )}
+
+      <div className="messages">
+
+        {filteredMessages.map((message) => (
+
+          <div
+            key={message.id}
+            className={
+              message.senderId === auth.currentUser?.uid
+                ? "message my-message"
+                : "message other-message"
+            }
+          >
+
+            <p>{message.text}</p>
+
+            <span>
+              {message.createdAt?.toDate
+                ? message.createdAt
+                    .toDate()
+                    .toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                : ""}
+            </span>
+
+          </div>
+
+        ))}
+
+        {isBlocked ? (
+
+          <div className="blocked-message">
+
+            <button
+              type="button"
+              className="unblock-button"
+              onClick={handleBlockToggle}
+              disabled={loadingBlock}
+            >
+              {loadingBlock ? "Please wait..." : "Unblock"}
+            </button>
+
+          </div>
+
+        ) : (
+
+          <MessageInput onSend={handleSend} />
+
+        )}
+
       </div>
 
-    )}
-
-    <div className="messages">
-
-      {filteredMessages.map((message) => (
-
-        <div
-          key={message.id}
-          className={
-            message.senderId === auth.currentUser?.uid
-              ? "message my-message"
-              : "message other-message"
-          }
-        >
-
-          <p>{message.text}</p>
-
-          <span>
-            {message.createdAt?.toDate
-              ? message.createdAt
-                  .toDate()
-                  .toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-              : ""}
-          </span>
-
-        </div>
-
-      ))}
-
-      <MessageInput onSend={onSend} />
-
     </div>
-
-  </div>
-);}
+  );
+}
