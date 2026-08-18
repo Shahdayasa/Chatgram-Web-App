@@ -8,156 +8,206 @@ import {
   where,
   orderBy,
   doc,
-  updateDoc,
+  setDoc,
 } from "firebase/firestore";
 
 import { Navbar } from "../components/Navbar";
 import { ChatWindow } from "../components/ChatWindow";
 import { Chatlist } from "../components/ChatList";
 import { auth, db } from "../firebase/firebase";
-export function Chat() {
-  const [users,setUsers]= useState([]);
-  const[selectedUser,setSelectedUser]=useState(null);
-  const[messages,setMessages]=useState([]);
-  const[previews,setPreviews]=useState({});
-  const[searchTerm,setSearchTerm]=useState("");
 
-  useEffect(()=>{
+export function Chat() {
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [previews, setPreviews] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // =========================
+  // GET USERS
+  // =========================
+  useEffect(() => {
     const unsubscribe = onSnapshot(
-      collection(db,"users"),
+      collection(db, "users"),
       (snapshot) => {
-        const usersData  = snapshot.docs.
-        map((doc) => (
-          {
-            id: doc.id,
-            ...doc.data(),
-          }))
+        const usersData = snapshot.docs
+          .map((userDoc) => {
+            const userData = userDoc.data();
+
+            console.log("USER FROM FIRESTORE:", {
+              id: userDoc.id,
+              ...userData,
+            });
+
+            return {
+              id: userDoc.id,
+              ...userData,
+            };
+          })
           .filter(
-           (user) => user.id !=auth.currentUser?.uid
+            (user) =>
+              user.id !== auth.currentUser?.uid &&
+              user.name &&
+              user.email &&
+              user.uid
           );
-          setUsers(usersData);
+
+        setUsers(usersData);
       },
       (error) => {
         console.error("Error getting users:", error);
       }
     );
-    return () => unsubscribe();
-  },[]);
 
+    return () => unsubscribe();
+  }, []);
+
+  // =========================
+  // GET MESSAGES
+  // =========================
   useEffect(() => {
-    if(!auth.currentUser) return;
-        const currentUserId = auth.currentUser.uid;
+    if (!auth.currentUser) return;
+
+    const currentUserId = auth.currentUser.uid;
+
     const messageQuery = query(
-      collection(db,"messages"),
-      where (
-        "participants",
-        "array-contains",
-        currentUserId
-      ),
-      orderBy("createdAt","asc")
+      collection(db, "messages"),
+      where("participants", "array-contains", currentUserId),
+      orderBy("createdAt", "asc")
     );
 
-    const unsubscribe = onSnapshot (
+    const unsubscribe = onSnapshot(
       messageQuery,
       (snapshot) => {
-        const allMessages = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const allMessages = snapshot.docs.map((messageDoc) => ({
+          id: messageDoc.id,
+          ...messageDoc.data(),
         }));
 
+        // Store latest message for each user
         const latestMessages = {};
 
         allMessages.forEach((message) => {
-          const otherUserId = 
-          message.senderId === currentUserId
-          ? message.receiverId
-          : message.senderId;
+          const otherUserId =
+            message.senderId === currentUserId
+              ? message.receiverId
+              : message.senderId;
 
-          latestMessages[otherUserId] =message;
+          latestMessages[otherUserId] = message;
         });
 
         setPreviews(latestMessages);
 
-        if(selectedUser)
-{
+        // Messages for selected user
+        if (selectedUser) {
           const selectedMessages = allMessages.filter(
-          (message) => 
-          (message.senderId === currentUserId && 
-            message.receiverId ===selectedUser.id) ||
-            (message.senderId === selectedUser.id &&
-              message.receiverId === currentUserId
-            )
+            (message) =>
+              (message.senderId === currentUserId &&
+                message.receiverId === selectedUser.uid) ||
+              (message.senderId === selectedUser.uid &&
+                message.receiverId === currentUserId)
           );
+
           setMessages(selectedMessages);
-        }
-        else {
+        } else {
           setMessages([]);
         }
       },
       (error) => {
-        console.error(
-          "Error getting messages:",
-          error
-        );
+        console.error("Error getting messages:", error);
       }
     );
 
     return () => unsubscribe();
-  },[selectedUser]);
+  }, [selectedUser]);
 
+  // =========================
+  // SEND MESSAGE
+  // =========================
   const handleSend = async (text) => {
     if (
       !selectedUser ||
       !auth.currentUser ||
-      ! text.trim()
-    )
-    {
+      !text.trim()
+    ) {
       return;
     }
 
     try {
-      await addDoc(collection(db,"messeages"),{
+      await addDoc(collection(db, "messages"), {
         text: text.trim(),
-        senderId:auth.currentUser.uid,
+
+        senderId: auth.currentUser.uid,
+
         receiverId: selectedUser.uid,
+
         participants: [
           auth.currentUser.uid,
-          selectedUser.id,
+          selectedUser.uid,
         ],
-   createdAt: serverTimestamp(),
+
+        createdAt: serverTimestamp(),
       });
-    }
-    catch (error){
+
+      console.log("Message sent successfully");
+    } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
-  useEffect(()=>{
-    if(!auth.currentUser) return;
+  // =========================
+  // ONLINE / OFFLINE STATUS
+  // =========================
+  useEffect(() => {
+    const currentUser = auth.currentUser;
 
-    const userRef= doc(
-    db,
-    "users",
-    auth.currentUser.uid
-    );
-    updateDoc(userRef, {
-      isOnline: true,
+    if (!currentUser) {
+      console.log("No authenticated user yet.");
+      return;
+    }
+
+    const userRef = doc(db, "users", currentUser.uid);
+
+    // User is online
+    setDoc(
+      userRef,
+      {
+        isOnline: true,
+      },
+      {
+        merge: true,
+      }
+    ).catch((error) => {
+      console.error("Error setting user online:", error);
     });
- return () => {
-  updateDoc(userRef, {
-    isOnline: false,
-  });
- };
-  },[]);
 
+    // User goes offline
+    return () => {
+      setDoc(
+        userRef,
+        {
+          isOnline: false,
+        },
+        {
+          merge: true,
+        }
+      ).catch((error) => {
+        console.error("Error setting user offline:", error);
+      });
+    };
+  }, []);
 
+  
   return (
     <div className="container">
+
       <div className="list">
-        <Navbar 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        />
+
+      <Navbar
+  searchTerm={searchTerm}
+  setSearchTerm={setSearchTerm}
+  onSelectUser={setSelectedUser}
+/>
 
         <Chatlist
           users={users}
@@ -165,13 +215,19 @@ export function Chat() {
           previews={previews}
           searchTerm={searchTerm}
         />
+
       </div>
+
       <div className="chat-area">
-        <ChatWindow 
-        selectedUser={selectedUser}
-        messages={messages}
-        onSend={handleSend}/>
+
+        <ChatWindow
+          selectedUser={selectedUser}
+          messages={messages}
+          onSend={handleSend}
+        />
+
       </div>
+
     </div>
   );
 }

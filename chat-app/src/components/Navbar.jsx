@@ -1,17 +1,311 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase/firebase";
-export function Navbar({ searchTerm, setSearchTerm }) {
+
+import {
+  doc,
+  onSnapshot,
+  setDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+
+import { auth, db } from "../firebase/firebase";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSquarePlus } from "@fortawesome/free-regular-svg-icons";
+import {
+  faMagnifyingGlass,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+
+export function Navbar({
+  searchTerm,
+  setSearchTerm,
+  onSelectUser,
+}) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Contacts
+  const [showContacts, setShowContacts] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+
+  // Current user
+  const [avatar, setAvatar] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const avatarInputRef = useRef(null);
+
+  /* =========================
+     CURRENT USER
+  ========================= */
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      console.log("No current user found.");
+      return;
+    }
+
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const userData = snapshot.data();
+
+          console.log("NAVBAR USER DATA:", userData);
+
+          setAvatar(userData.avatar || "");
+          setUserName(userData.name || "");
+          setUserEmail(
+            userData.email || currentUser.email || ""
+          );
+        }
+      },
+      (error) => {
+        console.error(
+          "Error loading Navbar user:",
+          error
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  /* =========================
+     CHANGE AVATAR
+  ========================= */
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please choose an image file.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be less than 5 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      alert("You must be logged in.");
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+
+      const formData = new FormData();
+
+      formData.append("file", file);
+      formData.append("upload_preset", "chat_avatars");
+
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/zhycdkaz/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      console.log("Cloudinary response:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error?.message ||
+            "Cloudinary upload failed"
+        );
+      }
+
+      const newAvatarUrl = data.secure_url;
+
+      await setDoc(
+        doc(db, "users", currentUser.uid),
+        {
+          avatar: newAvatarUrl,
+        },
+        {
+          merge: true,
+        }
+      );
+
+      console.log("Avatar updated successfully!");
+
+      alert(
+        "Profile picture updated successfully!"
+      );
+    } catch (error) {
+      console.error(
+        "Error changing avatar:",
+        error
+      );
+
+      alert(
+        "Failed to update profile picture."
+      );
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  };
+
+  /* =========================
+     LOAD ALL CONTACTS
+  ========================= */
+
+  const handleAddContact = async () => {
+    try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      setLoadingContacts(true);
+
+      // Get every user from Firestore
+      const usersSnapshot = await getDocs(
+        collection(db, "users")
+      );
+
+      const users = usersSnapshot.docs
+        .map((userDoc) => ({
+          id: userDoc.id,
+          ...userDoc.data(),
+        }))
+        .filter(
+          (user) =>
+            user.id !== currentUser.uid &&
+            user.name &&
+            user.email
+        );
+
+      setContacts(users);
+
+      // Open contacts modal
+      setShowContacts(true);
+
+      // Close side menu
+      setShowMenu(false);
+    } catch (error) {
+      console.error(
+        "Error loading contacts:",
+        error
+      );
+
+      alert("Failed to load contacts.");
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+ 
+
+  const filteredContacts = contacts.filter(
+    (contact) => {
+      const search =
+        contactSearch.toLowerCase().trim();
+
+      if (!search) return true;
+
+      const name =
+        contact.name?.toLowerCase() || "";
+
+      const email =
+        contact.email?.toLowerCase() || "";
+
+      return (
+        name.includes(search) ||
+        email.includes(search)
+      );
+    }
+  );
+
+ 
+
+ const handleSelectContact = (contact) => {
+  console.log("Selected contact:", contact);
+
+  // Open this user's chat
+  onSelectUser(contact);
+
+  // Close contacts modal
+  setShowContacts(false);
+
+  // Clear search
+  setContactSearch("");
+
+  // Close side menu
+  setShowMenu(false);
+};
+
+ 
+  const handleLogout = async () => {
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      try {
+        await setDoc(
+          doc(db, "users", currentUser.uid),
+          {
+            isOnline: false,
+          },
+          {
+            merge: true,
+          }
+        );
+      } catch (error) {
+        console.error(
+          "Error setting user offline:",
+          error
+        );
+      }
+    }
+
+    try {
+      await signOut(auth);
+
+      setShowLogoutConfirm(false);
+      setShowMenu(false);
+      setShowContacts(false);
+      setContactSearch("");
+    } catch (error) {
+      console.error(
+        "Error logging out:",
+        error
+      );
+    }
+  };
 
   return (
-    <nav className="navbar">
+    <>
+      
 
-      <div className="nav-menu">
-
+      <nav className="navbar">
         <button
           className="menu-button"
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={() => setShowMenu(true)}
+          aria-label="Open menu"
         >
           <svg
             width="24"
@@ -20,48 +314,370 @@ export function Navbar({ searchTerm, setSearchTerm }) {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              d="M2.99999 17H21C21.2549 17.0003 21.5 17.0979 21.6854 17.2728C21.8707 17.4478 21.9822 18.313 21.9972 18.0586C22.0121 17.8042 21.9293 17.5536 21.7657 17.3582C21.6021 17.1627 21.3701 17.0371 21.117 17.007L21 19H2.99999C2.74511 18.9997 2.49996 18.9021 2.31462 18.7272C2.12929 18.5522 2.01776 18.313 2.00282 18.0586C1.98788 17.8042 2.07067 17.5536 2.23426 17.3582C2.39785 17.1627 2.62989 17.0371 2.88299 17.007L2.99999 17H21ZM2.99999 11L21 10.998C21.2549 10.9983 21.5 11.0959 21.6854 11.2708C21.8707 11.4458 21.9822 11.685 21.9972 11.9394C22.0121 12.1938 21.9293 12.4444 21.7657 12.6398C21.6021 12.8353 21.3701 12.9609 21.117 12.991L21 12.998L2.99999 13C2.74511 12.9997 2.49996 12.9021 2.31462 12.7272C2.12929 12.5522 2.01776 12.313 2.00282 12.0586C1.98788 11.8042 2.07067 11.5536 2.23426 11.3582C2.39785 11.1627 2.62989 11.0371 2.88299 11.007L2.99999 11H21ZM2.99999 5H21C21.2549 5.00028 21.5 5.09788 21.6854 5.27285C21.8707 5.44782 21.9822 5.68695 21.9972 5.94139C22.0121 6.19584 21.9293 6.44638 21.7657 6.64183C21.6021 6.83729 21.3701 6.9629 21.117 6.993L21 7H2.99999C2.74511 6.99972 2.49996 6.90212 2.31462 6.72715C2.12929 6.55218 2.01776 6.31305 2.00282 6.05861C1.98788 5.80416 2.07067 5.55362 2.23426 5.35817C2.39785 5.16271 2.62989 5.0371 2.88299 5.007L2.99999 5H21Z"
-              fill="#707991"
+            <line
+              x1="3"
+              y1="6"
+              x2="21"
+              y2="6"
+              stroke="#707991"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            <line
+              x1="3"
+              y1="12"
+              x2="21"
+              y2="12"
+              stroke="#707991"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            <line
+              x1="3"
+              y1="18"
+              x2="21"
+              y2="18"
+              stroke="#707991"
+              strokeWidth="2"
+              strokeLinecap="round"
             />
           </svg>
         </button>
 
-        {showMenu && (
-          <button
-            className="logout-option"
-            onClick={() => signOut(auth)}
+        <div className="search-bar">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            Logout
-          </button>
-        )}
+            <circle
+              cx="10.5"
+              cy="10.5"
+              r="6.5"
+              stroke="#707991"
+              strokeWidth="2"
+            />
 
-      </div>
+            <path
+              d="M16 16L21 21"
+              stroke="#707991"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
 
-      <div className="search-bar">
-
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M9.99997 2.5C11.3979 2.49994 12.7681 2.89061 13.9559 3.62792C15.1436 4.36523 16.1016 5.41983 16.7218 6.6727C17.342 7.92558 17.5997 9.32686 17.4658 10.7184C17.3319 12.11 16.8117 13.4364 15.964 14.548L20.707 19.293C20.8863 19.473 20.9904 19.7144 20.9982 19.9684C21.006 20.2223 20.9168 20.4697 20.7487 20.6603C20.5807 20.8508 20.3464 20.9703 20.0935 20.9944C19.8406 21.0185 19.588 20.9454 19.387 20.79L19.293 20.707L14.548 15.964C13.601 16.6861 12.4956 17.1723 11.3234 17.3824C10.1512 17.5925 8.9458 17.5204 7.80697 17.1721C6.66814 16.8238 5.62862 16.2094 4.77443 15.3795C3.92023 14.5497 3.27592 13.5285 2.8948 12.4002C2.51368 11.2719 2.40672 10.0691 2.58277 8.89131C2.75881 7.7135 3.2128 6.59454 3.90717 5.62703C4.60153 4.65951 5.51631 3.87126 6.57581 3.32749C7.63532 2.78372 8.80908 2.50006 9.99997 2.5ZM9.99997 4.5C8.54128 4.5 7.14233 5.07946 6.11088 6.11091C5.07943 7.14236 4.49997 8.54131 4.49997 10C4.49997 11.4587 5.07943 12.8576 6.11088 13.8891C7.14233 14.9205 8.54128 15.5 9.99997 15.5C11.4587 15.5 12.8576 14.9205 13.8891 13.8891C14.9205 12.8576 15.5 11.4587 15.5 10C15.5 8.54131 14.9205 7.14236 13.8891 6.11091C12.8576 5.07946 11.4587 4.5 9.99997 4.5Z"
-            fill="#707991"
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchTerm}
+            onChange={(e) =>
+              setSearchTerm(e.target.value)
+            }
           />
-        </svg>
+        </div>
+      </nav>
 
-        <input
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+    
 
-      </div>
+      {showMenu && (
+        <>
+          <div
+            className="side-nav-overlay"
+            onClick={() => {
+              setShowMenu(false);
+            }}
+          />
 
-    </nav>
+          <aside className="side-nav">
+            {/* SIDE MENU HEADER */}
+
+            <div className="side-nav-header">
+              <h2>WhatsApp</h2>
+
+              <button
+                className="add-contact-icon-button"
+                onClick={handleAddContact}
+                aria-label="Add new contact"
+                title="Add new contact"
+              >
+                <FontAwesomeIcon
+                  icon={faSquarePlus}
+                />
+              </button>
+            </div>
+
+           
+
+            <div className="side-nav-user">
+              <div
+                className="profile-image-wrapper"
+                onClick={() =>
+                  avatarInputRef.current?.click()
+                }
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt="Profile"
+                    className="profile-avatar"
+                  />
+                ) : (
+                  <div className="profile-avatar-placeholder">
+                    {(userName || userEmail)
+                      ?.charAt(0)
+                      .toUpperCase()}
+                  </div>
+                )}
+
+                <div className="avatar-hover-overlay">
+                  <svg
+                    width="70"
+                    height="70"
+                    viewBox="0 0 70 70"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="14"
+                      y="22"
+                      width="42"
+                      height="32"
+                      rx="6"
+                      stroke="white"
+                      strokeWidth="5"
+                    />
+
+                    <circle
+                      cx="35"
+                      cy="38"
+                      r="10"
+                      stroke="white"
+                      strokeWidth="5"
+                    />
+
+                    <path
+                      d="M26 22L29 16H41L44 22"
+                      stroke="white"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+
+                    <path
+                      d="M54 10V22"
+                      stroke="white"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+
+                    <path
+                      d="M48 16H60"
+                      stroke="white"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <input
+                className="camera"
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                hidden
+              />
+
+              <div className="user-info">
+                <p>{userName}</p>
+              </div>
+            </div>
+
+            {/* LOGOUT */}
+
+            <button
+              className="side-nav-logout"
+              onClick={() => {
+                setShowMenu(false);
+                setShowLogoutConfirm(true);
+              }}
+            >
+              Logout
+            </button>
+          </aside>
+        </>
+      )}
+
+  
+      {showContacts && (
+        <>
+      <div
+  className="contacts-modal-overlay"
+  onClick={() => {
+    setShowContacts(false);
+    setContactSearch("");
+  }}
+/>
+
+          <div className="contacts-modal">
+            {/* HEADER */}
+
+            <div className="contacts-header">
+              <div>
+                <h2>Add new contact</h2>
+
+                <p>
+                  {loadingContacts
+                    ? "Loading..."
+                    : `${contacts.length} users`}
+                </p>
+              </div>
+
+              <button
+                className="contacts-close"
+                onClick={() => {
+                  setShowContacts(false);
+                  setContactSearch("");
+                }}
+                aria-label="Close contacts"
+              >
+                <FontAwesomeIcon
+                  icon={faXmark}
+                />
+              </button>
+            </div>
+
+            {/* SEARCH */}
+
+            <div className="contacts-search">
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+              />
+
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={contactSearch}
+                onChange={(e) =>
+                  setContactSearch(
+                    e.target.value
+                  )
+                }
+                autoFocus
+              />
+            </div>
+
+            {/* CONTACTS */}
+
+            <div className="contacts-list">
+              {loadingContacts ? (
+                <div className="contacts-loading">
+                  Loading contacts...
+                </div>
+              ) : filteredContacts.length > 0 ? (
+                filteredContacts.map(
+                  (contact) => (
+                    <button
+                      key={contact.id}
+                      className="contact-item"
+                      onClick={() =>
+                        handleSelectContact(
+                          contact
+                        )
+                      }
+                    >
+                      {contact.avatar ? (
+                        <img
+                          src={contact.avatar}
+                          alt={contact.name}
+                          className="contact-avatar"
+                        />
+                      ) : (
+                        <div className="contact-avatar-placeholder">
+                          {(
+                            contact.name ||
+                            "U"
+                          )
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                      )}
+
+                      <div className="contact-info">
+                        <strong>
+                          {contact.name}
+                        </strong>
+
+                        <span>
+                          {contact.email}
+                        </span>
+                      </div>
+
+                      {contact.isOnline && (
+                        <span className="contact-status online">
+                          Online
+                        </span>
+                      )}
+                    </button>
+                  )
+                )
+              ) : (
+                <div className="no-contacts">
+                  <div className="no-contacts-icon">
+                    <FontAwesomeIcon
+                      icon={faMagnifyingGlass}
+                    />
+                  </div>
+
+                  <h3>
+                    No users found
+                  </h3>
+
+                  <p>
+                    Try another name or email.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+    
+      {showLogoutConfirm && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <h3>Log out?</h3>
+
+            <p>
+              Are you sure you want to log out?
+            </p>
+
+            <div className="confirm-actions">
+              <button
+                className="cancel-button"
+                onClick={() =>
+                  setShowLogoutConfirm(false)
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                className="confirm-logout-button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

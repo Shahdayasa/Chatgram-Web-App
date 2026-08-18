@@ -21,7 +21,6 @@ export function Chatlist({
         return dateB - dateA;
       });
   } else {
-    
     chatUsers = users.filter((user) =>
       user.name?.toLowerCase().includes(search)
     );
@@ -45,12 +44,19 @@ export function Chatlist({
             className="chat-user"
             onClick={() => onSelectUser(user)}
           >
+
             <div className="prof-pic">
-              <span>
-                {user.name
-                  ?.charAt(0)
-                  .toUpperCase()}
-              </span>
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={`${user.name}'s avatar`}
+                  className="profile-avatar"
+                />
+              ) : (
+                <span>
+                  {user.name?.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
 
             <div className="chat-user-info">
@@ -79,6 +85,7 @@ export function Chatlist({
                   })}
               </span>
             )}
+
           </div>
         );
       })}
@@ -86,4 +93,6 @@ export function Chatlist({
     </div>
   );
 }
+
+
 

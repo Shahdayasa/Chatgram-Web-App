@@ -13,7 +13,6 @@ function App() {
   const [user, setUser] = useState(null);
 
   const [isRegister, setIsRegister] = useState(false);
-
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -47,13 +46,6 @@ function App() {
     }, 4000);
   };
 
-  const closeToast = () => {
-    setToast({
-      show: false,
-      message: "",
-      type: "",
-    });
-  };
 
   return (
     <>
@@ -73,12 +65,6 @@ function App() {
             <p>{toast.message}</p>
           </div>
 
-          <button
-            className="toast-close"
-            onClick={closeToast}
-          >
-            ×
-          </button>
         </div>
       )}
 
