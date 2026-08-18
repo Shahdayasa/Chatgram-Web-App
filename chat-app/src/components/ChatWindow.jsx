@@ -21,13 +21,9 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
   const [showSearch, setShowSearch] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
 
-  // Store the IDs of blocked users
   const [blockedUsers, setBlockedUsers] = useState([]);
-
-  // Prevent multiple block requests
   const [loadingBlock, setLoadingBlock] = useState(false);
 
-  // Get the current user's blocked users
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -38,41 +34,32 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     const unsubscribe = onSnapshot(userRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-
-        // Get blockedUsers or use an empty array
         setBlockedUsers(data.blockedUsers || []);
       } else {
         setBlockedUsers([]);
       }
     });
 
-    // Stop listening when component is removed
     return () => unsubscribe();
   }, []);
 
-  // Check if the selected user is blocked
   const isBlocked = selectedUser
     ? blockedUsers.includes(selectedUser.id)
     : false;
 
-  // Filter messages according to search text
-  const filteredMessages = messages.filter((message) => {
-    const search = chatSearch.toLowerCase().trim();
+  const searchResults = chatSearch.trim()
+    ? messages.filter((message) =>
+        message.text
+          ?.toLowerCase()
+          .includes(chatSearch.toLowerCase().trim())
+      )
+    : [];
 
-    if (!search) {
-      return true;
-    }
-
-    return message.text?.toLowerCase().includes(search);
-  });
-
-  // Close the search
   const closeSearch = () => {
     setShowSearch(false);
     setChatSearch("");
   };
 
-  // Block or unblock the selected user
   const handleBlockToggle = async () => {
     const currentUser = auth.currentUser;
 
@@ -86,18 +73,15 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
       const userRef = doc(db, "users", currentUser.uid);
 
       if (isBlocked) {
-        // Remove user from blocked list
         await updateDoc(userRef, {
           blockedUsers: arrayRemove(selectedUser.id),
         });
       } else {
-        // Add user to blocked list
         await updateDoc(userRef, {
           blockedUsers: arrayUnion(selectedUser.id),
         });
       }
 
-     
       setShowMore(false);
     } catch (error) {
       console.error("Error updating block status:", error);
@@ -134,11 +118,9 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     <div className="chat-window">
 
       {showSearch ? (
-
         <div className="chat-search-header">
 
           <div className="chat-search-box">
-
             <FontAwesomeIcon icon={faMagnifyingGlass} />
 
             <input
@@ -148,7 +130,6 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
               onChange={(e) => setChatSearch(e.target.value)}
               autoFocus
             />
-
           </div>
 
           <button
@@ -159,16 +140,45 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             Cancel
           </button>
 
+          {chatSearch.trim() && (
+            <div className="chat-search-results">
+
+              {searchResults.length > 0 ? (
+                searchResults.map((message) => (
+                  <div
+                    key={message.id}
+                    className="chat-search-result"
+                  >
+                    <p>{message.text}</p>
+
+                    <span>
+                      {message.createdAt?.toDate
+                        ? message.createdAt
+                            .toDate()
+                            .toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                        : ""}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="no-message-results">
+                  No messages found
+                </div>
+              )}
+
+            </div>
+          )}
+
         </div>
-
       ) : (
-
         <div className="chat-header">
 
           <div className="prof-name-seen">
 
             <div className="prof-pic">
-
               {selectedUser.avatar ? (
                 <img
                   src={selectedUser.avatar}
@@ -180,11 +190,9 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   {selectedUser.name?.charAt(0).toUpperCase()}
                 </span>
               )}
-
             </div>
 
             <div className="name-status">
-
               <h3>{selectedUser.name}</h3>
 
               <p>
@@ -194,14 +202,12 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   ? "Online"
                   : "Offline"}
               </p>
-
             </div>
 
           </div>
 
           <div className="additional">
 
-         
             <button
               className="chat-search-button"
               type="button"
@@ -262,13 +268,11 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
           </div>
 
         </div>
-
       )}
 
       <div className="messages">
 
-        {filteredMessages.map((message) => (
-
+        {messages.map((message) => (
           <div
             key={message.id}
             className={
@@ -277,7 +281,6 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                 : "message other-message"
             }
           >
-
             <p>{message.text}</p>
 
             <span>
@@ -290,13 +293,10 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                     })
                 : ""}
             </span>
-
           </div>
-
         ))}
 
         {isBlocked ? (
-
           <div className="blocked-message">
 
             <button
@@ -309,11 +309,8 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             </button>
 
           </div>
-
         ) : (
-
           <MessageInput onSend={handleSend} />
-
         )}
 
       </div>
