@@ -1129,7 +1129,84 @@ body {
 
   flex-shrink: 0;
 }
+/*
+.blocked-message {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  left: 24px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 6px 20px rgba(1, 22, 39, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  z-index: 5;
+  animation: blockedBarIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
 
+.blocked-message button {
+  height: 34px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.blocked-message .unblock-button {
+  color: #4caf50;
+}
+
+.blocked-message .unblock-button:hover {
+  color: #2e8b32;
+  transform: translateY(-2px);
+}
+
+.blocked-message .delete-chat-button {
+  color: #e05a67;
+}
+
+.blocked-message .delete-chat-button:hover {
+  color: #d93644;
+  transform: translateY(-2px);
+}
+
+.blocked-message button:active {
+  transform: scale(0.94);
+}
+
+.blocked-message button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes blockedBarIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}*/
 .profile-image-wrapper .profile-avatar {
   width: 100%;
   height: 100%;

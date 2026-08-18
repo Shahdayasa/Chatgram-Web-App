@@ -1,17 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageInput } from "./MessageInput";
-import { auth } from "../firebase/firebase";
+import { auth,db } from "../firebase/firebase";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMagnifyingGlass,
   faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
+import { doc, onSnapshot } from "firebase/firestore";
 
 export function ChatWindow({ selectedUser, messages, onSend }) {
-  const [showMore, setShowMore] = useState(false);
-  const [showSearch ,setShowSearch] = useState(false);
-  const [chatSearch,setChatSearch] = useState("");
+    const [showMore, setShowMore] = useState(false);
+    const [showSearch ,setShowSearch] = useState(false);
+    const [chatSearch,setChatSearch] = useState("");
+    const [blockedUsers, setBlockedUsers] = useState([]);
+    // const [loadingBlock,setLoadingBlock]=useState(false);
+
+    useEffect(()=>{
+      const currentUser = auth.currentUser;
+      
+      if(!currentUser) return ;
+      const userRef = doc(db,"users",currentUser.uid);
+
+      const unsubscribe = onSnapshot (userRef, (snapshot)=>{
+        if(snapshot.exists()){
+          const data = snapshot.data();
+
+          setBlockedUsers(data.blockedUsers || []);
+        }
+        else {
+          setBlockedUsers([]);
+        }
+        });
+        return () => unsubscribe();
+      
+    },[]);
+
     const filteredMessages= messages.filter((message) => {
     const search = chatSearch.toLocaleLowerCase().trim();
 
