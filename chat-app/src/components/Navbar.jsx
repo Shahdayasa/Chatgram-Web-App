@@ -574,15 +574,15 @@ export function Navbar({
                   </div>
                 ) : (
                   <div className="user-name-display">
-                    <p>{userName}</p>
-
-                    <button
+                  <span><p>{userName}</p></span>  
+                     <span><button
                       type="button"
                       onClick={handleEditName}
                       aria-label="Edit username"
                     >
                       <FontAwesomeIcon icon={faPen} />
-                    </button>
+                    </button></span>
+              
                   </div>
                 )}
               </div>

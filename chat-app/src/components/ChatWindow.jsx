@@ -18,44 +18,17 @@ import {
 
 export function ChatWindow({ selectedUser, messages, onSend }) {
   const currentUser = auth.currentUser;
+
   const [showMore, setShowMore] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [chatSearch, setChatSearch] = useState("");
-  const [avatar, setAvatar] = useState("");
+
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loadingBlock, setLoadingBlock] = useState(false);
 
-  /*useEffect(() => {
-    const currentUser = auth.currentUser;
+  const [avatar, setAvatar] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
 
-    if (!currentUser) {
-      console.log("No current user found.");
-      return;
-    }
-
-    const userRef = doc(db, "users", currentUser.uid);
-
-    const unsubscribe = onSnapshot(
-      userRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const userData = snapshot.data();
-
-          console.log("NAVBAR USER DATA:", userData);
-
-          setAvatar(userData.avatar || "");
-        }
-      },
-      (error) => {
-        console.error(
-          "Error loading Navbar user:",
-          error
-        );
-      }
-    
-    );
-    return () => unsubscribe();
-  }, []); */
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -66,14 +39,25 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     const unsubscribe = onSnapshot(userRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+
+        setAvatar(data.avatar || "");
+        setCurrentUserName(
+          data.name || currentUser.displayName || ""
+        );
+
         setBlockedUsers(data.blockedUsers || []);
       } else {
+        setAvatar("");
+        setCurrentUserName(
+          currentUser.displayName || ""
+        );
         setBlockedUsers([]);
       }
     });
 
     return () => unsubscribe();
-  }, []); 
+  }, []);
+
   const isBlocked = selectedUser
     ? blockedUsers.includes(selectedUser.id)
     : false;
@@ -101,7 +85,11 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     try {
       setLoadingBlock(true);
 
-      const userRef = doc(db, "users", currentUser.uid);
+      const userRef = doc(
+        db,
+        "users",
+        currentUser.uid
+      );
 
       if (isBlocked) {
         await updateDoc(userRef, {
@@ -115,7 +103,10 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
       setShowMore(false);
     } catch (error) {
-      console.error("Error updating block status:", error);
+      console.error(
+        "Error updating block status:",
+        error
+      );
     } finally {
       setLoadingBlock(false);
     }
@@ -127,6 +118,30 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     }
 
     onSend(text);
+  };
+
+  const renderAvatar = (
+    image,
+    name,
+    alt
+  ) => {
+    if (image) {
+      return (
+        <img
+          src={image}
+          alt={alt}
+          className="message-avatar-image"
+        />
+      );
+    }
+
+    return (
+      <div className="message-avatar-placeholder">
+        {(name || "U")
+          .charAt(0)
+          .toUpperCase()}
+      </div>
+    );
   };
 
   if (!selectedUser) {
@@ -146,20 +161,23 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
   }
 
   return (
-    
     <div className="chat-window">
 
       {showSearch ? (
         <div className="chat-search-header">
 
           <div className="chat-search-box">
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <FontAwesomeIcon
+              icon={faMagnifyingGlass}
+            />
 
             <input
               type="text"
               placeholder="Search"
               value={chatSearch}
-              onChange={(e) => setChatSearch(e.target.value)}
+              onChange={(e) =>
+                setChatSearch(e.target.value)
+              }
               autoFocus
             />
           </div>
@@ -176,25 +194,54 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             <div className="chat-search-results">
 
               {searchResults.length > 0 ? (
-                searchResults.map((message) => (
-                  <div
-                    key={message.id}
-                    className="chat-search-result"
-                  >
-                    <p>{message.text}</p>
+                searchResults.map((message) => {
+                  const isMyMessage =
+                    message.senderId ===
+                    currentUser?.uid;
 
-                    <span>
-                      {message.createdAt?.toDate
-                        ? message.createdAt
-                            .toDate()
-                            .toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                        : ""}
-                    </span>
-                  </div>
-                ))
+                  return (
+                    <div
+                      key={message.id}
+                      className="chat-search-result"
+                    >
+
+                      <div className="chat-search-result-avatar">
+                        {isMyMessage
+                          ? renderAvatar(
+                              avatar,
+                              currentUserName,
+                              "You"
+                            )
+                          : renderAvatar(
+                              selectedUser.avatar,
+                              selectedUser.name,
+                              selectedUser.name
+                            )}
+                      </div>
+
+                      <div className="chat-search-result-content">
+
+                        <p>{message.text}</p>
+
+                        <span>
+                          {message.createdAt?.toDate
+                            ? message.createdAt
+                                .toDate()
+                                .toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )
+                            : ""}
+                        </span>
+
+                      </div>
+
+                    </div>
+                  );
+                })
               ) : (
                 <div className="no-message-results">
                   No messages found
@@ -206,11 +253,13 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
         </div>
       ) : (
+
         <div className="chat-header">
 
           <div className="prof-name-seen">
 
             <div className="prof-pic">
+
               {selectedUser.avatar ? (
                 <img
                   src={selectedUser.avatar}
@@ -219,12 +268,16 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                 />
               ) : (
                 <span>
-                  {selectedUser.name?.charAt(0).toUpperCase()}
+                  {selectedUser.name
+                    ?.charAt(0)
+                    .toUpperCase()}
                 </span>
               )}
+
             </div>
 
             <div className="name-status">
+
               <h3>{selectedUser.name}</h3>
 
               <p>
@@ -234,6 +287,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   ? "Online"
                   : "Offline"}
               </p>
+
             </div>
 
           </div>
@@ -243,9 +297,13 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             <button
               className="chat-search-button"
               type="button"
-              onClick={() => setShowSearch(true)}
+              onClick={() =>
+                setShowSearch(true)
+              }
             >
-              <FontAwesomeIcon icon={faMagnifyingGlass} />
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+              />
             </button>
 
             <button
@@ -272,9 +330,13 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
               <button
                 className="chat-more-button"
                 type="button"
-                onClick={() => setShowMore((prev) => !prev)}
+                onClick={() =>
+                  setShowMore((prev) => !prev)
+                }
               >
-                <FontAwesomeIcon icon={faEllipsisVertical} />
+                <FontAwesomeIcon
+                  icon={faEllipsisVertical}
+                />
               </button>
 
               {showMore && (
@@ -282,7 +344,9 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
                   <button
                     type="button"
-                    onClick={handleBlockToggle}
+                    onClick={
+                      handleBlockToggle
+                    }
                     disabled={loadingBlock}
                   >
                     {loadingBlock
@@ -304,38 +368,97 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
       <div className="messages">
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={
-              message.senderId === auth.currentUser?.uid
-                ? "message my-message"
-                : "message other-message"
-            }
-          >
-            <p>{message.text}</p>
-            <span>
-              {message.createdAt?.toDate
-                ? message.createdAt
-                    .toDate()
-                    .toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                : ""}
-            </span>
+        {messages.map((message) => {
 
+          const isMyMessage =
+            message.senderId ===
+            currentUser?.uid;
 
-            
+          return (
+            <div
+              key={message.id}
+              className={
+                isMyMessage
+                  ? "message-row my-message-row"
+                  : "message-row other-message-row"
+              }
+            >
+
+              {!isMyMessage && (
+                <div className="message-avatar">
+                  {renderAvatar(
+                    selectedUser.avatar,
+                    selectedUser.name,
+                    selectedUser.name
+                  )}
+                </div>
+              )}
+
+              <div
+                className={
+                  isMyMessage
+                    ? "message my-message"
+                    : "message other-message"
+                }
+              >
+
+                <p>{message.text}</p>
+
+                <span>
+                  {message.createdAt?.toDate
+                    ? message.createdAt
+                        .toDate()
+                        .toLocaleTimeString(
+                          [],
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                    : ""}
+                </span>
+
+              </div>
+
+              {isMyMessage && (
+                <div className="message-avatar">
+                  {renderAvatar(
+                    avatar,
+                    currentUserName ||
+                      currentUser?.displayName ||
+                      currentUser?.email,
+                    "You"
+                  )}
+                </div>
+              )}
+
+            </div>
+          );
+        })}
+
+        {isBlocked ? (
+          <div className="blocked-message">
+
+            <button
+              type="button"
+              className="unblock-button"
+              onClick={handleBlockToggle}
+              disabled={loadingBlock}
+            >
+              {loadingBlock
+                ? "Please wait..."
+                : "Unblock"}
+            </button>
+
           </div>
-
-          
-        ))}
-     <MessageInput onSend={handleSend} />
+        ) : (
+          <MessageInput
+            onSend={handleSend}
+          />
+        )}
 
       </div>
 
-      
     </div>
   );
 }

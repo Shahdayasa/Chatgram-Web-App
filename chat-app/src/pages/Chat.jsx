@@ -23,9 +23,7 @@ export function Chat() {
   const [previews, setPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  // =========================
-  // GET USERS
-  // =========================
+
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "users"),
@@ -231,3 +229,6 @@ export function Chat() {
     </div>
   );
 }
+
+
+ 
