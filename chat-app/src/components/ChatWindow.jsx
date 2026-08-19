@@ -18,6 +18,49 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 
+const getLastSeen = (timestamp) =>{
+  if(!timestamp?.toDate) {
+    return "Last seen recently";
+  }
+
+  const lastSeenDate = timestamp.toDate();
+  const now = new Date();
+
+  const diffInSeconds = Math.floor(
+    (now - lastSeenDate) / 1000
+  );
+
+  if(diffInSeconds < 60) {
+    return "Last seen just now";
+  }
+
+  const diffInMinutes = Math.floor (
+    diffInSeconds / 60
+  )
+
+  if(diffInMinutes < 60) {
+    return `Last seen ${diffInMinutes} min ago`;
+  }
+   
+  const diffInHours = Math.floor (
+    diffInMinutes / 60
+  );
+
+  if (diffInHours < 24) {
+    return `Last seen ${diffInHours} 
+    ${diffInHours === 1 ? "hour" : "hours"} ago`;
+  }
+
+  const diffInDays = Math.floor (
+    diffInHours / 24
+  );
+
+  if(diffInDays < 7) {
+    return `Last seen ${diffInDays} 
+     ${diffInDays === 1 ? "day" : "days"} ago`;
+  }
+  return `Last seen ${lastSeenDate.toLocalDateString()}`;
+}
 export function ChatWindow({ selectedUser, messages, onSend }) {
   const currentUser = auth.currentUser;
 
@@ -291,7 +334,9 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   ? "Blocked"
                   : selectedUser.isOnline
                   ? "Online"
-                  : "Offline"}
+                  : getLastSeen (
+                    selectedUser.lastSeen
+                  )}
               </p>
 
             </div>
