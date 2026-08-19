@@ -20,11 +20,7 @@ import {
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
-export function Navbar({
-  searchTerm,
-  setSearchTerm,
-  onSelectUser,
-}) {
+export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -39,12 +35,15 @@ export function Navbar({
   const [editingName, setEditingName] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [savingName, setSavingName] = useState(false);
-  const [description,setDescription] = useState("");
-  const [editingDescription,setEditingDescription] = useState ("");
-  const [newDescription,setNewDescription]=useState("");
-  const [savingDescription,setSavingDescription] = useState (false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-
+  const [description, setDescription] = useState("");
+const [editingDescription, setEditingDescription] = useState(false);
+  const [newDescription, setNewDescription] = useState("");
+  const [savingDescription, setSavingDescription] = useState(false);
+  //const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -87,19 +86,16 @@ export function Navbar({
           setAvatar(userData.avatar || "");
           setUserName(userData.name || "");
           setNewUserName(userData.name || "");
+          setPhone(userData.phone || "");
+          setNewPhone(userData.phone || "");
+          setDescription(userData.description || "");
 
-          setDescription(
-            userData.description || ""
-          );
-
-          setNewDescription(
-            userData.description || ""
-          );
+          setNewDescription(userData.description || "");
         }
       },
       (error) => {
         console.error("Error loading Navbar user:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -142,15 +138,13 @@ export function Navbar({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error?.message || "Cloudinary upload failed"
-        );
+        throw new Error(data.error?.message || "Cloudinary upload failed");
       }
 
       const newAvatarUrl = data.secure_url;
@@ -162,20 +156,14 @@ export function Navbar({
         },
         {
           merge: true,
-        }
+        },
       );
 
-      showToast(
-        "Profile picture updated successfully!",
-        "success"
-      );
+      showToast("Profile picture updated successfully!", "success");
     } catch (error) {
       console.error("Error changing avatar:", error);
 
-      showToast(
-        "Failed to update profile picture.",
-        "error"
-      );
+      showToast("Failed to update profile picture.", "error");
     } finally {
       setUploadingAvatar(false);
       e.target.value = "";
@@ -186,8 +174,6 @@ export function Navbar({
     setNewUserName(userName);
     setEditingName(true);
   };
-
-
 
   const handleSaveName = async () => {
     const currentUser = auth.currentUser;
@@ -219,95 +205,117 @@ export function Navbar({
         },
         {
           merge: true,
-        }
+        },
       );
 
       setUserName(trimmedName);
       setNewUserName(trimmedName);
       setEditingName(false);
 
-      showToast(
-        "Username updated successfully!",
-        "success"
-      );
+      showToast("Username updated successfully!", "success");
     } catch (error) {
       console.error("Error updating username:", error);
 
-      showToast(
-        "Failed to update username.",
-        "error"
-      );
+      showToast("Failed to update username.", "error");
     } finally {
       setSavingName(false);
     }
   };
 
   const handleEditDescription = () => {
-    setNewDescription (description);
+    setNewDescription(description);
     setEditingDescription(true);
   };
 
   const handleSaveDescription = async () => {
     const currentUser = auth.currentUser;
 
-    if(!currentUser) {
-      showToast (
-        "Ypu must be logged in.",
-        "error"
-      );
+    if (!currentUser) {
+      showToast("Ypu must be logged in.", "error");
       return;
     }
 
-    const trimmedDescription =
-    newDescription.trim();
+    const trimmedDescription = newDescription.trim();
 
-    if(trimmedDescription > 100){
-      showToast(
-        "Description must be less than 100 characters.",
-        "error"
-      );
-      return;
-    }
+  if (trimmedDescription.length > 100) {
+  showToast(
+    "Description must be less than 100 characters.",
+    "error"
+  );
+  return;
+}
 
     try {
       setSavingDescription(true);
 
       await setDoc(
-        doc(db, "users" , currentUser.uid),
+        doc(db, "users", currentUser.uid),
         {
           description: trimmedDescription,
         },
         {
           merge: true,
-        }
+        },
       );
- setDescription(trimmedDescription);
- setNewDescription(trimmedDescription);
- setEditingDescription(false);
+      setDescription(trimmedDescription);
+      setNewDescription(trimmedDescription);
+      setEditingDescription(false);
 
+      showToast("Description updated successfully!", "success");
+    } catch (error) {
+      console.log("error updating description:", error);
 
- showToast(
-  "Description updated successfully!",
-  "success"
- );
-    }
-    catch(error){
-      console.log(
-        "error updating description:",
-        error
-      );
-
-      showToast(
-        "Faild to update description.",
-        "error"
-      );
-    }
-    finally {
+      showToast("Faild to update description.", "error");
+    } finally {
       setSavingDescription(false);
     }
   };
+  const handleEditPhone = () => {
+    setNewPhone(phone);
+    setEditingPhone(true);
+  };
 
- const handleAddContact = async () => {
+  const handleSavePhone = async () => {
+    const currentUser = auth.currentUser;
+    const trimmedPhone = newPhone.trim();
+
+    if (!currentUser) {
+      showToast("You must be logged in.", "error");
+      return;
+    }
+
+    if (!trimmedPhone) {
+      showToast("Phone number cannot be empty.", "error");
+      return;
+    }
+
+    if (!/^[0-9+\-\s()]{7,20}$/.test(trimmedPhone)) {
+      showToast("Please enter a valid phone number.", "error");
+      return;
+    }
+
+    try {
+      setSavingPhone(true);
+
+      await setDoc(
+        doc(db, "users", currentUser.uid),
+        { phone: trimmedPhone },
+        { merge: true },
+      );
+
+      setPhone(trimmedPhone);
+      setNewPhone(trimmedPhone);
+      setEditingPhone(false);
+
+      showToast("Phone number updated successfully!", "success");
+    } catch (error) {
+      console.error("Error updating phone number:", error);
+      showToast("Failed to update phone number.", "error");
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+  const handleAddContact = async () => {
     try {
       const currentUser = auth.currentUser;
 
@@ -318,9 +326,7 @@ export function Navbar({
 
       setLoadingContacts(true);
 
-      const usersSnapshot = await getDocs(
-        collection(db, "users")
-      );
+      const usersSnapshot = await getDocs(collection(db, "users"));
 
       const users = usersSnapshot.docs
         .map((userDoc) => ({
@@ -328,10 +334,7 @@ export function Navbar({
           ...userDoc.data(),
         }))
         .filter(
-          (user) =>
-            user.id !== currentUser.uid &&
-            user.name &&
-            user.email
+          (user) => user.id !== currentUser.uid && user.name && user.email,
         );
 
       setContacts(users);
@@ -340,10 +343,7 @@ export function Navbar({
     } catch (error) {
       console.error("Error loading contacts:", error);
 
-      showToast(
-        "Failed to load contacts.",
-        "error"
-      );
+      showToast("Failed to load contacts.", "error");
     } finally {
       setLoadingContacts(false);
     }
@@ -356,10 +356,7 @@ export function Navbar({
     const name = contact.name?.toLowerCase() || "";
     const email = contact.email?.toLowerCase() || "";
 
-    return (
-      name.includes(search) ||
-      email.includes(search)
-    );
+    return name.includes(search) || email.includes(search);
   });
 
   const handleSelectContact = (contact) => {
@@ -382,13 +379,10 @@ export function Navbar({
           },
           {
             merge: true,
-          }
+          },
         );
       } catch (error) {
-        console.error(
-          "Error setting user offline:",
-          error
-        );
+        console.error("Error setting user offline:", error);
       }
     }
 
@@ -402,10 +396,7 @@ export function Navbar({
     } catch (error) {
       console.error("Error logging out:", error);
 
-      showToast(
-        "Failed to log out.",
-        "error"
-      );
+      showToast("Failed to log out.", "error");
     }
   };
 
@@ -418,11 +409,7 @@ export function Navbar({
           </div>
 
           <div className="toast-content">
-            <strong>
-              {toast.type === "success"
-                ? "Success"
-                : "Error"}
-            </strong>
+            <strong>{toast.type === "success" ? "Success" : "Error"}</strong>
 
             <p>{toast.message}</p>
           </div>
@@ -502,9 +489,7 @@ export function Navbar({
             type="text"
             placeholder="Search"
             value={searchTerm}
-            onChange={(e) =>
-              setSearchTerm(e.target.value)
-            }
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </nav>
@@ -526,30 +511,20 @@ export function Navbar({
                 aria-label="Add new contact"
                 title="Add new contact"
               >
-                <FontAwesomeIcon
-                  icon={faSquarePlus}
-                />
+                <FontAwesomeIcon icon={faSquarePlus} />
               </button>
             </div>
 
             <div className="side-nav-user">
               <div
                 className="profile-image-wrapper"
-                onClick={() =>
-                  avatarInputRef.current?.click()
-                }
+                onClick={() => avatarInputRef.current?.click()}
               >
                 {avatar ? (
-                  <img
-                    src={avatar}
-                    alt="Profile"
-                    className="profile-avatar"
-                  />
+                  <img src={avatar} alt="Profile" className="profile-avatar" />
                 ) : (
                   <div className="profile-avatar-placeholder">
-                    {(userName || "U")
-                      .charAt(0)
-                      .toUpperCase()}
+                    {(userName || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
 
@@ -614,127 +589,116 @@ export function Navbar({
               />
 
               <div className="user-info">
-                {editingName ? (
-                  <div className="edit-name-container">
-                    <div className="editing">
-                      <span>
-                      <input
+                <div className="user-name-display">
+                  <label htmlFor="name">
+                    <p>Name</p>
+                  </label>
+
+                  <div className={`name-field ${editingName ? "is-editing" : ""}`}>
+                    <input
+                      id="name"
                       type="text"
-                      value={newUserName}
-                      onChange={(e) =>
-                        setNewUserName(e.target.value)
-                      }
-                      autoFocus
+                      value={editingName ? newUserName : userName}
+                      readOnly={!editingName}
                       disabled={savingName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editingName) {
+                          handleSaveName();
+                        }
+                      }}
                     />
-                      </span>
-                  
-                    <span><button
+
+                    <button
                       type="button"
-                      onClick={handleSaveName}
+                      onClick={editingName ? handleSaveName : handleEditName}
                       disabled={savingName}
-                      aria-label="Save name"
+                      aria-label={editingName ? "Save name" : "Edit name"}
+                      className="input-edit-button"
                     >
-                      <FontAwesomeIcon className="check-icon" icon={faCheck} />
-                    </button></span>
-                
-                    </div>
-                   
-
-
+                      <FontAwesomeIcon icon={editingName ? faCheck : faPen} />
+                    </button>
                   </div>
-                ) : (
-                  <div className="user-name-display">
-                <div>   <label for="user-name">
-                   <p>Name</p>
-                  </label> </div>
-                <div className="name-field">
-                  <input
-                    id="name"
-                    type="text"
-                    value={userName}
-                    readOnly
-                  />
-
-                  <button
-                    type="button"
-                    onClick={handleEditName}
-                    aria-label="Edit username"
-                    className="input-edit-button"
-                  >
-                    <FontAwesomeIcon icon={faPen} />
-                  </button>
                 </div>
-                 
-              
-                  </div>
-                )}
 
-                {editingDescription ? (
-                  <div className="edit-description-container">
-                    <input 
-                    type="text"
-                    value={newDescription}
-                    onChange={(e) => 
-                      setNewDescription(
-                        e.target.value
-                      )
-                    } 
-                    placeholder="Add description"
-                    maxLength={100}
-                    autoFocus
-                    disabled={
-                      savingDescription
-                      }/>
+                <div className="user-phone-display">
+                  <label htmlFor="phone">
+                    <p>Phone Number</p>
+                  </label>
 
-                      <button
+                      <div className={`phone-field ${editingPhone ? "is-editing" : ""}`}>
+                      <input
+                      id="phone"
+                      type="tel"
+                      value={editingPhone ? newPhone : phone}
+                      placeholder="Add phone number"
+                      readOnly={!editingPhone}
+                      disabled={savingPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editingPhone) {
+                          handleSavePhone();
+                        }
+                      }}
+                    />
+
+                    <button
                       type="button"
-                       onClick={
-                        handleSaveDescription
-                       }
-                       disabled={ 
-                      savingDescription}
-                      aria-label="save description"
-                      >
-                      <FontAwesomeIcon
-                        className="check-icon"
-                        icon={faCheck}
-                      />
-                      </button>
+                      onClick={editingPhone ? handleSavePhone : handleEditPhone}
+                      disabled={savingPhone}
+                      aria-label={
+                        editingPhone ? "Save phone number" : "Edit phone number"
+                      }
+                      className="input-edit-button"
+                    >
+                      <FontAwesomeIcon icon={editingPhone ? faCheck : faPen} />
+                    </button>
                   </div>
-                ): 
-                <div className="user-description-display">
-                  <span>
-                    <div>
-                      <label>
-                      <p>
-                      {description || 
-                      "Add description"}
-                    </p>
-                      </label>
-                    </div>
-                 <div className="description-field">
-                  <input
-                    id="description"
-                    type="text"
-                    value={description}
-                    placeholder="Add description"
-                    readOnly
-                  />
-
-                  <button
-                    type="button"
-                    onClick={handleEditDescription}
-                    aria-label="Edit description"
-                    className="input-edit-button"
-                  >
-                    <FontAwesomeIcon icon={faPen} />
-                  </button>
                 </div>
-                                
-                  </span>
-                 
-                </div> }
+
+                <div className="user-description-display">
+                  <label htmlFor="description">
+                    <p>Description</p>
+                  </label>
+
+                      <div className={`description-field ${editingDescription ? "is-editing" : ""}`}>
+                      <input
+                      id="description"
+                      type="text"
+                      value={editingDescription ? newDescription : description}
+                      placeholder="Add description"
+                      maxLength={100}
+                      readOnly={!editingDescription}
+                      disabled={savingDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editingDescription) {
+                          handleSaveDescription();
+                        }
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={
+                        editingDescription
+                          ? handleSaveDescription
+                          : handleEditDescription
+                      }
+                      disabled={savingDescription}
+                      aria-label={
+                        editingDescription
+                          ? "Save description"
+                          : "Edit description"
+                      }
+                      className="input-edit-button"
+                    >
+                      <FontAwesomeIcon
+                        icon={editingDescription ? faCheck : faPen}
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -767,9 +731,7 @@ export function Navbar({
                 <h2>Add new contact</h2>
 
                 <p>
-                  {loadingContacts
-                    ? "Loading..."
-                    : `${contacts.length} users`}
+                  {loadingContacts ? "Loading..." : `${contacts.length} users`}
                 </p>
               </div>
 
@@ -786,34 +748,26 @@ export function Navbar({
             </div>
 
             <div className="contacts-search">
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-              />
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
 
               <input
                 type="text"
                 placeholder="Search users..."
                 value={contactSearch}
-                onChange={(e) =>
-                  setContactSearch(e.target.value)
-                }
+                onChange={(e) => setContactSearch(e.target.value)}
                 autoFocus
               />
             </div>
 
             <div className="contacts-list">
               {loadingContacts ? (
-                <div className="contacts-loading">
-                  Loading contacts...
-                </div>
+                <div className="contacts-loading">Loading contacts...</div>
               ) : filteredContacts.length > 0 ? (
                 filteredContacts.map((contact) => (
                   <button
                     key={contact.id}
                     className="contact-item"
-                    onClick={() =>
-                      handleSelectContact(contact)
-                    }
+                    onClick={() => handleSelectContact(contact)}
                   >
                     {contact.avatar ? (
                       <img
@@ -823,42 +777,30 @@ export function Navbar({
                       />
                     ) : (
                       <div className="contact-avatar-placeholder">
-                        {(contact.name || "U")
-                          .charAt(0)
-                          .toUpperCase()}
+                        {(contact.name || "U").charAt(0).toUpperCase()}
                       </div>
                     )}
 
                     <div className="contact-info">
-                      <strong>
-                        {contact.name}
-                      </strong>
+                      <strong>{contact.name}</strong>
 
-                      <span>
-                        {contact.email}
-                      </span>
+                      <span>{contact.email}</span>
                     </div>
 
                     {contact.isOnline && (
-                      <span className="contact-status online">
-                        Online
-                      </span>
+                      <span className="contact-status online">Online</span>
                     )}
                   </button>
                 ))
               ) : (
                 <div className="no-contacts">
                   <div className="no-contacts-icon">
-                    <FontAwesomeIcon
-                      icon={faMagnifyingGlass}
-                    />
+                    <FontAwesomeIcon icon={faMagnifyingGlass} />
                   </div>
 
                   <h3>No users found</h3>
 
-                  <p>
-                    Try another name or email.
-                  </p>
+                  <p>Try another name or email.</p>
                 </div>
               )}
             </div>
@@ -871,24 +813,17 @@ export function Navbar({
           <div className="confirm-dialog">
             <h3>Log out?</h3>
 
-            <p>
-              Are you sure you want to log out?
-            </p>
+            <p>Are you sure you want to log out?</p>
 
             <div className="confirm-actions">
               <button
                 className="cancel-button"
-                onClick={() =>
-                  setShowLogoutConfirm(false)
-                }
+                onClick={() => setShowLogoutConfirm(false)}
               >
                 Cancel
               </button>
 
-              <button
-                className="confirm-logout-button"
-                onClick={handleLogout}
-              >
+              <button className="confirm-logout-button" onClick={handleLogout}>
                 Logout
               </button>
             </div>
