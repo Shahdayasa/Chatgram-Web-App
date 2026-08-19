@@ -700,20 +700,28 @@ export function Navbar({
                 ): 
                 <div className="user-description-display">
                   <span>
-                    <p>
+                    <div>
+                      <label>
+                      <p>
                       {description || 
                       "Add description"}
                     </p>
+                      </label>
+                    </div>
+                   <div className="description-field">
+                   <span><input id="description">
+                  </input> </span>    
+                     <span><button
+                      type="button"
+                      onClick={handleEditDescription}
+                      aria-label="Edit description"
+                    >
+                      <FontAwesomeIcon className="pen-icon" icon={faPen} />
+                    </button></span>
+                    </div>
+                 
                   </span>
-                  <button
-                  type="button"
-                  onClick={handleEditDescription}
-                  aria-label="Edit description">
-                     <FontAwesomeIcon
-                        className="pen-icon"
-                        icon={faPen}
-                      />
-                  </button>
+                 
                 </div> }
               </div>
             </div>

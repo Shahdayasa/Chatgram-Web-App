@@ -399,20 +399,20 @@ body {
   color: #707991;
   font-size: 12px;
 }
-.user-name-display label p{
+.user-name-display label p, .user-description-display label p{
   display: flex;
   color: #707991;
 }
 
-.user-name-display button {
+.user-name-display button, .user-description-display button{
   background-color: #ffffff;
   border: none;
 }
 
-.name-field {
+.name-field, .description-field {
   display: flex;
 }
-.name-field input{
+.name-field input, .description-field input{
      display: flex;
      padding: 4px;
      background: transparent;
