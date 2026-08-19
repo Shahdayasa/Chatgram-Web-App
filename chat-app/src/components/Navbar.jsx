@@ -176,10 +176,7 @@ export function Navbar({
     setEditingName(true);
   };
 
-  const handleCancelEditName = () => {
-    setNewUserName(userName);
-    setEditingName(false);
-  };
+
 
   const handleSaveName = async () => {
     const currentUser = auth.currentUser;
@@ -544,7 +541,9 @@ export function Navbar({
               <div className="user-info">
                 {editingName ? (
                   <div className="edit-name-container">
-                    <input
+                    <div className="editing">
+                      <span>
+                      <input
                       type="text"
                       value={newUserName}
                       onChange={(e) =>
@@ -553,24 +552,21 @@ export function Navbar({
                       autoFocus
                       disabled={savingName}
                     />
-
-                    <button
+                      </span>
+                  
+                    <span><button
                       type="button"
                       onClick={handleSaveName}
                       disabled={savingName}
                       aria-label="Save name"
                     >
-                      <FontAwesomeIcon icon={faCheck} />
-                    </button>
+                      <FontAwesomeIcon className="check-icon" icon={faCheck} />
+                    </button></span>
+                
+                    </div>
+                   
 
-                    <button
-                      type="button"
-                      onClick={handleCancelEditName}
-                      disabled={savingName}
-                      aria-label="Cancel editing"
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
+
                   </div>
                 ) : (
                   <div className="user-name-display">
@@ -580,7 +576,7 @@ export function Navbar({
                       onClick={handleEditName}
                       aria-label="Edit username"
                     >
-                      <FontAwesomeIcon icon={faPen} />
+                      <FontAwesomeIcon className="pen-icon" icon={faPen} />
                     </button></span>
               
                   </div>

@@ -409,17 +409,53 @@ body {
   background-color: #ffffff;
   border: none;
 }
-/*
+
 .edit-name-container input{
   border: none;
-  border-radius:8px ;
-  -webkit-border-radius:8px ;
-  -moz-border-radius:8px ;
-  -ms-border-radius:8px ;
-  -o-border-radius:8px ;
-padding: 4px;
-background-color: #b5d8b5;
-}*/
+   padding: 4px;
+
+}
+.edit-name-container input:focus{
+outline: none;
+}
+.editing{
+  display: flex;
+  flex-direction: row;
+     border: none;
+    outline: none;
+    background: transparent;
+    border-bottom: 2px solid black;
+}
+
+
+.editing button{
+  background-color: #ffffff;
+  border: none;
+
+}
+
+.editing .check-icon {
+  padding: 5px;
+  border-radius:50% ;
+  -webkit-border-radius:50% ;
+  -moz-border-radius:50% ;
+  -ms-border-radius:50% ;
+  -o-border-radius:50% ;
+  transition:all 0.25s ease ;
+  -webkit-transition:all 0.25s ease ;
+  -moz-transition:all 0.25s ease ;
+  -ms-transition:all 0.25s ease ;
+  -o-transition:all 0.25s ease ;
+}
+.editing .check-icon:hover {
+  background-color: #d7e0f1;
+  transform: scale(0.8);
+  -webkit-transform: scale(0.8);
+  -moz-transform: scale(0.8);
+  -ms-transform: scale(0.8);
+  -o-transform: scale(0.8);
+}
+
 
 .chat-window {
   width: 100%;
@@ -629,7 +665,6 @@ background-color: #b5d8b5;
 
 .message-highlighted {
   outline:2px solid #388e3c;
-  outline-offset:2px ;
   transition: outline 0.2s ease;
 }
 
@@ -1118,9 +1153,7 @@ position: relative;
 
 .user-info {
   min-width: 0;
-
   margin-left: 0;
-
   overflow: hidden;
 }
 
@@ -1135,6 +1168,7 @@ position: relative;
 
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 14px;
 }
 
 .user-info span {
@@ -1474,11 +1508,10 @@ position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   padding-bottom: 18px;
-
   border-bottom: 1px solid #edf0f5;
 }
+
 
 .contacts-modal .contacts-header h2 {
   margin: 0;
