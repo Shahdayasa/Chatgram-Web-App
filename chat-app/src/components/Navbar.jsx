@@ -645,7 +645,13 @@ export function Navbar({
                   </div>
                 ) : (
                   <div className="user-name-display">
-                  <span><p>{userName}</p></span>  
+                <div>   <label for="user-name">
+                   <p>Name</p>
+                  </label> </div>
+                
+                    <div className="name-field">
+                   <span><input id="name">
+                  </input> </span>    
                      <span><button
                       type="button"
                       onClick={handleEditName}
@@ -653,6 +659,8 @@ export function Navbar({
                     >
                       <FontAwesomeIcon className="pen-icon" icon={faPen} />
                     </button></span>
+                    </div>
+                 
               
                   </div>
                 )}

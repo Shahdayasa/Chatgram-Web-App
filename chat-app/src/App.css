@@ -399,32 +399,41 @@ body {
   color: #707991;
   font-size: 12px;
 }
-
-.user-name-display {
+.user-name-display label p{
   display: flex;
-  
+  color: #707991;
 }
+
 .user-name-display button {
-  margin-left: 80px;
   background-color: #ffffff;
   border: none;
 }
 
-.edit-name-container input{
-  border: none;
-   padding: 4px;
-
+.name-field {
+  display: flex;
 }
-.edit-name-container input:focus{
+.name-field input{
+     display: flex;
+     padding: 4px;
+     background: transparent;
+     border-bottom: 2px solid black;
+     justify-content: center;
+     align-items: center;
+     flex-direction: row;
+     border: 2px #707991 solid;
+     border-radius:7px ;
+     -webkit-border-radius:7px ;
+     -moz-border-radius:7px ;
+     -ms-border-radius:7px ;
+     -o-border-radius:7px ;
+}
+.name-field input:focus{
 outline: none;
 }
 .editing{
   display: flex;
   flex-direction: row;
-     border: none;
-    outline: none;
-    background: transparent;
-    border-bottom: 2px solid black;
+
 }
 
 
@@ -1143,7 +1152,7 @@ position: relative;
 .side-nav-user {
   display: flex;
   align-items: center;
-
+flex-direction: column;
   gap: 12px;
 
   padding: 24px 0;
@@ -1189,8 +1198,9 @@ position: relative;
 
 
 .profile-image-wrapper {
-  width: 50px;
-  height: 50px;
+  margin: auto;
+  width: 80px;
+  height: 80px;
 
   border-radius: 50%;
 
