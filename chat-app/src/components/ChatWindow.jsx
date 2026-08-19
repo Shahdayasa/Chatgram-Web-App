@@ -205,19 +205,6 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                       className="chat-search-result"
                     >
 
-                      <div className="chat-search-result-avatar">
-                        {isMyMessage
-                          ? renderAvatar(
-                              avatar,
-                              currentUserName,
-                              "You"
-                            )
-                          : renderAvatar(
-                              selectedUser.avatar,
-                              selectedUser.name,
-                              selectedUser.name
-                            )}
-                      </div>
 
                       <div className="chat-search-result-content">
 
