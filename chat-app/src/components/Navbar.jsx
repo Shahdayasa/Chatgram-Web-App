@@ -39,7 +39,10 @@ export function Navbar({
   const [editingName, setEditingName] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [savingName, setSavingName] = useState(false);
-
+  const [description,setDescription] = useState("");
+  const [editingDescription,setEditingDescription] = useState ("");
+  const [newDescription,setNewDescription]=useState("");
+  const [savingDescription,setSavingDescription] = useState (false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [toast, setToast] = useState({
@@ -84,6 +87,14 @@ export function Navbar({
           setAvatar(userData.avatar || "");
           setUserName(userData.name || "");
           setNewUserName(userData.name || "");
+
+          setDescription(
+            userData.description || ""
+          );
+
+          setNewDescription(
+            userData.description || ""
+          );
         }
       },
       (error) => {
@@ -231,7 +242,72 @@ export function Navbar({
     }
   };
 
-  const handleAddContact = async () => {
+  const handleEditDescription = () => {
+    setNewDescription (description);
+    setEditingDescription(true);
+  };
+
+  const handleSaveDescription = async () => {
+    const currentUser = auth.currentUser;
+
+    if(!currentUser) {
+      showToast (
+        "Ypu must be logged in.",
+        "error"
+      );
+      return;
+    }
+
+    const trimmedDescription =
+    newDescription.trim();
+
+    if(trimmedDescription > 100){
+      showToast(
+        "Description must be less than 100 characters.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      setSavingDescription(true);
+
+      await setDoc(
+        doc(db, "users" , currentUser.uid),
+        {
+          description: trimmedDescription,
+        },
+        {
+          merge: true,
+        }
+      );
+ setDescription(trimmedDescription);
+ setNewDescription(trimmedDescription);
+ setEditingDescription(false);
+
+
+ showToast(
+  "Description updated successfully!",
+  "success"
+ );
+    }
+    catch(error){
+      console.log(
+        "error updating description:",
+        error
+      );
+
+      showToast(
+        "Faild to update description.",
+        "error"
+      );
+    }
+    finally {
+      setSavingDescription(false);
+    }
+  };
+
+ const handleAddContact = async () => {
     try {
       const currentUser = auth.currentUser;
 
@@ -272,7 +348,6 @@ export function Navbar({
       setLoadingContacts(false);
     }
   };
-
   const filteredContacts = contacts.filter((contact) => {
     const search = contactSearch.toLowerCase().trim();
 
@@ -581,6 +656,57 @@ export function Navbar({
               
                   </div>
                 )}
+
+                {editingDescription ? (
+                  <div className="edit-description-container">
+                    <input 
+                    type="text"
+                    value={newDescription}
+                    onChange={(e) => 
+                      setNewDescription(
+                        e.target.value
+                      )
+                    } 
+                    placeholder="Add description"
+                    maxLength={100}
+                    autoFocus
+                    disabled={
+                      savingDescription
+                      }/>
+
+                      <button
+                      type="button"
+                       onClick={
+                        handleSaveDescription
+                       }
+                       disabled={ 
+                      savingDescription}
+                      aria-label="save description"
+                      >
+                      <FontAwesomeIcon
+                        className="check-icon"
+                        icon={faCheck}
+                      />
+                      </button>
+                  </div>
+                ): 
+                <div className="user-description-display">
+                  <span>
+                    <p>
+                      {description || 
+                      "Add description"}
+                    </p>
+                  </span>
+                  <button
+                  type="button"
+                  onClick={handleEditDescription}
+                  aria-label="Edit description">
+                     <FontAwesomeIcon
+                        className="pen-icon"
+                        icon={faPen}
+                      />
+                  </button>
+                </div> }
               </div>
             </div>
 
