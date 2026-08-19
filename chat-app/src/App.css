@@ -400,35 +400,65 @@ body {
   font-size: 12px;
 }
 .user-name-display label p, .user-description-display label p{
-  display: flex;
   color: #707991;
 }
 
 .user-name-display button, .user-description-display button{
   background-color: #ffffff;
-  border: none;
+
 }
 
-.name-field, .description-field {
+.name-field,
+.description-field {
+  position: relative;
+  width: 100%;
+  margin-top: 15px;
+  gap: 3px;
+}
+
+.name-field input,
+.description-field input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #e1e5eb;
+  padding-left: 10px;
+  border-radius: 12px;
+  background: #fff;
+  box-sizing: border-box;
+  font-size: 16px;
+  color: #333;
+  outline: none;
+  -webkit-border-radius: 12px;
+  -moz-border-radius: 12px;
+  -ms-border-radius: 12px;
+  -o-border-radius: 12px;
+}
+
+
+.input-edit-button {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
 }
-.name-field input, .description-field input{
-     display: flex;
-     padding: 4px;
-     background: transparent;
-     border-bottom: 2px solid black;
-     justify-content: center;
-     align-items: center;
-     flex-direction: row;
-     border: 2px #707991 solid;
-     border-radius:7px ;
-     -webkit-border-radius:7px ;
-     -moz-border-radius:7px ;
-     -ms-border-radius:7px ;
-     -o-border-radius:7px ;
+
+.input-edit-button svg {
+  font-size: 17px;
+  color: #9db7d8;
 }
-.name-field input:focus{
-outline: none;
+
+.input-edit-button:hover svg {
+  color: #7f9fc7;
 }
 .editing{
   display: flex;
@@ -773,6 +803,7 @@ position: relative;
   color: #d93644;}
 .messages{
   position: relative;
+  overflow-x: hidden;
 
   width: 100%;
   min-height: 0;
@@ -920,6 +951,7 @@ position: relative;
   width: 694px;
   margin-right: 111px ;
   margin-left:111px ;
+  margin: auto;
 }
 
 .message-input input {
@@ -1013,6 +1045,7 @@ position: relative;
   animation: sideNavOpen 0.25s ease;
   overflow: hidden;
   -webkit-animation: sideNavOpen 0.25s ease;
+  
 }
 
 @keyframes sideNavOpen {
@@ -2201,14 +2234,13 @@ flex-direction: column;
 
   .messages {
     padding: 16px 16px 84px;
+   
   }
 
   .message-input {
-
     width: 100%;
     height: 52px;
-    width: 100%;
-    position: absolute;
+   position: absolute;
   }
 
   .message {

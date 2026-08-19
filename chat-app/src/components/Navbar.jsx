@@ -648,18 +648,23 @@ export function Navbar({
                 <div>   <label for="user-name">
                    <p>Name</p>
                   </label> </div>
-                
-                    <div className="name-field">
-                   <span><input id="name">
-                  </input> </span>    
-                     <span><button
-                      type="button"
-                      onClick={handleEditName}
-                      aria-label="Edit username"
-                    >
-                      <FontAwesomeIcon className="pen-icon" icon={faPen} />
-                    </button></span>
-                    </div>
+                <div className="name-field">
+                  <input
+                    id="name"
+                    type="text"
+                    value={userName}
+                    readOnly
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleEditName}
+                    aria-label="Edit username"
+                    className="input-edit-button"
+                  >
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                </div>
                  
               
                   </div>
@@ -708,18 +713,25 @@ export function Navbar({
                     </p>
                       </label>
                     </div>
-                   <div className="description-field">
-                   <span><input id="description">
-                  </input> </span>    
-                     <span><button
-                      type="button"
-                      onClick={handleEditDescription}
-                      aria-label="Edit description"
-                    >
-                      <FontAwesomeIcon className="pen-icon" icon={faPen} />
-                    </button></span>
-                    </div>
-                 
+                 <div className="description-field">
+                  <input
+                    id="description"
+                    type="text"
+                    value={description}
+                    placeholder="Add description"
+                    readOnly
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleEditDescription}
+                    aria-label="Edit description"
+                    className="input-edit-button"
+                  >
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                </div>
+                                
                   </span>
                  
                 </div> }
