@@ -816,19 +816,17 @@ position: relative;
   align-items: flex-end;
   gap: 8px;
   width: 100%;
+  
  
 }
 
 .my-message-row {
   justify-content: flex-end;
-  margin-right: 111px;
 
 }
 
 .other-message-row {
   justify-content: flex-start;
-    margin-left: 111px;
-
 }
 
 .message-avatar-wrapper {
