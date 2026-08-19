@@ -60,9 +60,7 @@ export function Chat() {
     return () => unsubscribe();
   }, []);
 
-  // =========================
-  // GET MESSAGES
-  // =========================
+
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -119,9 +117,7 @@ export function Chat() {
     return () => unsubscribe();
   }, [selectedUser]);
 
-  // =========================
-  // SEND MESSAGE
-  // =========================
+  
   const handleSend = async (text) => {
     if (
       !selectedUser ||
@@ -153,9 +149,7 @@ export function Chat() {
     }
   };
 
-  // =========================
-  // ONLINE / OFFLINE STATUS
-  // =========================
+
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -166,7 +160,6 @@ export function Chat() {
 
     const userRef = doc(db, "users", currentUser.uid);
 
-    // User is online
     setDoc(
       userRef,
       {
@@ -179,12 +172,12 @@ export function Chat() {
       console.error("Error setting user online:", error);
     });
 
-    // User goes offline
     return () => {
       setDoc(
         userRef,
         {
           isOnline: false,
+          lastSeen: serverTimestamp(),
         },
         {
           merge: true,
