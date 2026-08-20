@@ -18,49 +18,41 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 
-const getLastSeen = (timestamp) =>{
-  if(!timestamp?.toDate) {
+const getLastSeen = (timestamp) => {
+  if (!timestamp?.toDate) {
     return "Last seen recently";
   }
 
   const lastSeenDate = timestamp.toDate();
   const now = new Date();
 
-  const diffInSeconds = Math.floor(
-    (now - lastSeenDate) / 1000
-  );
+  const diffInSeconds = Math.floor((now - lastSeenDate) / 1000);
 
-  if(diffInSeconds < 60) {
+  if (diffInSeconds < 60) {
     return "Last seen just now";
   }
 
-  const diffInMinutes = Math.floor (
-    diffInSeconds / 60
-  )
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
 
-  if(diffInMinutes < 60) {
+  if (diffInMinutes < 60) {
     return `Last seen ${diffInMinutes} min ago`;
   }
-   
-  const diffInHours = Math.floor (
-    diffInMinutes / 60
-  );
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
 
   if (diffInHours < 24) {
-    return `Last seen ${diffInHours} 
-    ${diffInHours === 1 ? "hour" : "hours"} ago`;
+    return `Last seen ${diffInHours} ${diffInHours === 1 ? "hour" : "hours"} ago`;
   }
 
-  const diffInDays = Math.floor (
-    diffInHours / 24
-  );
+  const diffInDays = Math.floor(diffInHours / 24);
 
-  if(diffInDays < 7) {
-    return `Last seen ${diffInDays} 
-     ${diffInDays === 1 ? "day" : "days"} ago`;
+  if (diffInDays < 7) {
+    return `Last seen ${diffInDays} ${diffInDays === 1 ? "day" : "days"} ago`;
   }
-  return `Last seen ${lastSeenDate.toLocalDateString()}`;
-}
+
+  return `Last seen ${lastSeenDate.toLocaleDateString()}`;
+};
+
 export function ChatWindow({ selectedUser, messages, onSend }) {
   const currentUser = auth.currentUser;
 
@@ -76,6 +68,8 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
   const [currentUserName, setCurrentUserName] = useState("");
 
   const messageRefs = useRef({});
+  const messagesContainerRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -89,16 +83,12 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
         const data = snapshot.data();
 
         setAvatar(data.avatar || "");
-        setCurrentUserName(
-          data.name || currentUser.displayName || ""
-        );
+        setCurrentUserName(data.name || currentUser.displayName || "");
 
         setBlockedUsers(data.blockedUsers || []);
       } else {
         setAvatar("");
-        setCurrentUserName(
-          currentUser.displayName || ""
-        );
+        setCurrentUserName(currentUser.displayName || "");
         setBlockedUsers([]);
       }
     });
@@ -118,24 +108,38 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
       )
     : [];
 
-  // Reset to the first match whenever the search text changes
   useEffect(() => {
-    setCurrentMatchIndex(0);
-  }, [chatSearch]);
+    if (chatSearch.trim()) return; // don't fight with search scrolling
 
-  // Scroll to and highlight the current match
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
+  }, [messages, selectedUser]);
+
   useEffect(() => {
-    if (searchMatches.length === 0) return;
+    if (!chatSearch.trim() || searchMatches.length === 0) {
+      return;
+    }
 
     const currentMatch = searchMatches[currentMatchIndex];
-    if (!currentMatch) return;
 
-    const el = messageRefs.current[currentMatch.id];
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!currentMatch) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMatchIndex, chatSearch, messages.length]);
+
+    const messageElement = messageRefs.current[currentMatch.id];
+
+    if (!messageElement) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      messageElement.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }, [chatSearch, currentMatchIndex, searchMatches]);
 
   const goToNextMatch = () => {
     if (searchMatches.length === 0) return;
@@ -167,11 +171,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     try {
       setLoadingBlock(true);
 
-      const userRef = doc(
-        db,
-        "users",
-        currentUser.uid
-      );
+      const userRef = doc(db, "users", currentUser.uid);
 
       if (isBlocked) {
         await updateDoc(userRef, {
@@ -185,10 +185,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
       setShowMore(false);
     } catch (error) {
-      console.error(
-        "Error updating block status:",
-        error
-      );
+      console.error("Error updating block status:", error);
     } finally {
       setLoadingBlock(false);
     }
@@ -202,26 +199,16 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
     onSend(text);
   };
 
-  const renderAvatar = (
-    image,
-    name,
-    alt
-  ) => {
+  const renderAvatar = (image, name, alt) => {
     if (image) {
       return (
-        <img
-          src={image}
-          alt={alt}
-          className="message-avatar-image"
-        />
+        <img src={image} alt={alt} className="message-avatar-image" />
       );
     }
 
     return (
       <div className="message-avatar-placeholder">
-        {(name || "U")
-          .charAt(0)
-          .toUpperCase()}
+        {(name || "U").charAt(0).toUpperCase()}
       </div>
     );
   };
@@ -234,9 +221,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
           <h2>Start a new conversation</h2>
 
-          <p>
-            Select a user from the chat list to start chatting.
-          </p>
+          <p>Select a user from the chat list to start chatting.</p>
         </div>
       </div>
     );
@@ -244,22 +229,16 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
 
   return (
     <div className="chat-window">
-
       {showSearch ? (
         <div className="chat-search-header">
-
           <div className="chat-search-box">
-            <FontAwesomeIcon
-              icon={faMagnifyingGlass}
-            />
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
 
             <input
               type="text"
               placeholder="Search"
               value={chatSearch}
-              onChange={(e) =>
-                setChatSearch(e.target.value)
-              }
+              onChange={(e) => setChatSearch(e.target.value)}
               autoFocus
             />
           </div>
@@ -299,16 +278,11 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
           >
             Cancel
           </button>
-
         </div>
       ) : (
-
         <div className="chat-header">
-
           <div className="prof-name-seen">
-
             <div className="prof-pic">
-
               {selectedUser.avatar ? (
                 <img
                   src={selectedUser.avatar}
@@ -316,17 +290,11 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   className="profile-avatar"
                 />
               ) : (
-                <span>
-                  {selectedUser.name
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </span>
+                <span>{selectedUser.name?.charAt(0).toUpperCase()}</span>
               )}
-
             </div>
 
             <div className="name-status">
-
               <h3>{selectedUser.name}</h3>
 
               <p>
@@ -334,27 +302,18 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   ? "Blocked"
                   : selectedUser.isOnline
                   ? "Online"
-                  : getLastSeen (
-                    selectedUser.lastSeen
-                  )}
+                  : getLastSeen(selectedUser.lastSeen)}
               </p>
-
             </div>
-
           </div>
 
           <div className="additional">
-
             <button
               className="chat-search-button"
               type="button"
-              onClick={() =>
-                setShowSearch(true)
-              }
+              onClick={() => setShowSearch(true)}
             >
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-              />
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
 
             <button
@@ -377,27 +336,19 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
             </button>
 
             <div className="chat-more-wrapper">
-
               <button
                 className="chat-more-button"
                 type="button"
-                onClick={() =>
-                  setShowMore((prev) => !prev)
-                }
+                onClick={() => setShowMore((prev) => !prev)}
               >
-                <FontAwesomeIcon
-                  icon={faEllipsisVertical}
-                />
+                <FontAwesomeIcon icon={faEllipsisVertical} />
               </button>
 
               {showMore && (
                 <div className="chat-more-menu">
-
                   <button
                     type="button"
-                    onClick={
-                      handleBlockToggle
-                    }
+                    onClick={handleBlockToggle}
                     disabled={loadingBlock}
                   >
                     {loadingBlock
@@ -406,24 +357,16 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                       ? "Unblock User"
                       : "Block User"}
                   </button>
-
                 </div>
               )}
-
             </div>
-
           </div>
-
         </div>
       )}
 
-      <div className="messages">
-
+      <div className="messages" ref={messagesContainerRef}>
         {messages.map((message) => {
-
-          const isMyMessage =
-            message.senderId ===
-            currentUser?.uid;
+          const isMyMessage = message.senderId === currentUser?.uid;
 
           const isCurrentMatch =
             chatSearch.trim() &&
@@ -440,7 +383,6 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   : "message-row other-message-row"
               }
             >
-
               {!isMyMessage && (
                 <div className="message-avatar">
                   {renderAvatar(
@@ -459,23 +401,16 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   (isCurrentMatch ? " message-highlighted" : "")
                 }
               >
-
                 <p>{message.text}</p>
 
                 <span>
                   {message.createdAt?.toDate
-                    ? message.createdAt
-                        .toDate()
-                        .toLocaleTimeString(
-                          [],
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )
+                    ? message.createdAt.toDate().toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
                     : ""}
                 </span>
-
               </div>
 
               {isMyMessage && (
@@ -489,34 +424,27 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
                   )}
                 </div>
               )}
-
             </div>
           );
         })}
 
-        {isBlocked ? (
-          <div className="blocked-message">
-
-            <button
-              type="button"
-              className="unblock-button"
-              onClick={handleBlockToggle}
-              disabled={loadingBlock}
-            >
-              {loadingBlock
-                ? "Please wait..."
-                : "Unblock"}
-            </button>
-
-          </div>
-        ) : (
-          <MessageInput
-            onSend={handleSend}
-          />
-        )}
-
+        <div ref={messagesEndRef} />
       </div>
 
+      {isBlocked ? (
+        <div className="blocked-message">
+          <button
+            type="button"
+            className="unblock-button"
+            onClick={handleBlockToggle}
+            disabled={loadingBlock}
+          >
+            {loadingBlock ? "Please wait..." : "Unblock"}
+          </button>
+        </div>
+      ) : (
+        <MessageInput onSend={handleSend} />
+      )}
     </div>
   );
 }

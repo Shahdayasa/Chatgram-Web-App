@@ -10,11 +10,11 @@ export function Register({ showToast, onBackToLogin }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [phone,setPhone] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
 
-  const handleAvatarChange = (e) => {
+    const handleAvatarChange = (e) => {
     const file = e.target.files[0];
 
     if (!file) return;
@@ -39,10 +39,15 @@ export function Register({ showToast, onBackToLogin }) {
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password ||!phone) {
       showToast("Please fill in all fields", "error");
       return;
     }
+
+    if (!/^[0-9+\-\s()]{7,20}$/.test(phone.trim())) {
+  showToast("Please enter a valid phone number", "error");
+  return;
+}
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -87,6 +92,7 @@ export function Register({ showToast, onBackToLogin }) {
       await setDoc(doc(db, "users", user.uid), {
         name,
         email: user.email,
+        phone: phone.trim(),
         uid: user.uid,
         avatar: avatarUrl,
       });
@@ -162,7 +168,7 @@ export function Register({ showToast, onBackToLogin }) {
           <p>Choose profile picture</p>
         </div>
 
-        {/* Name */}
+      
         <div className="name">
           <input
             type="text"
@@ -171,6 +177,16 @@ export function Register({ showToast, onBackToLogin }) {
             onChange={(e) => setName(e.target.value)}
           />
         </div>
+
+
+          <div className="phone">
+            <input 
+            type="tel" 
+            value={phone}
+            placeholder="Phone number..." 
+            onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
 
         <div className="email">
           <input
