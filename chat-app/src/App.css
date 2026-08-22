@@ -1085,8 +1085,8 @@ position: relative;
 .empty-chat {
   align-items: center;
   justify-content: center;
+  background-color: #8BABD8;
 
-  background-color: #f7f9fc;
 }
 
 .start-conversation {
@@ -1105,7 +1105,7 @@ position: relative;
 
   border-radius: 50%;
 
-  background-color: #8babd8;
+  background-color: #ffffffff;
 
   font-size: 38px;
 }
@@ -2299,6 +2299,16 @@ flex-direction: column;
   font-size: 12px;
 }
 
+.call-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: black;
+  
+}
 
 @media (max-width: 680px) {
   .container {
