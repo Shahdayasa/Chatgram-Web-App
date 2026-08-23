@@ -18,7 +18,7 @@ const configuration = {
   ],
 };
 
-export function createPeerConnsection () {
+export function createPeerConnection () {
   return new RTCPeerConnection(configuration);
 }
 export async function getAudioStream() {
@@ -26,4 +26,58 @@ export async function getAudioStream() {
     audio: true,
     vedio: false,
   });
+}
+
+export async function createCall(
+callId,
+callerId,
+receiverId,
+stream,
+onRemoteStram
+){
+
+  const peerConnection = createPeerConnection ();
+     stream.getTracks().forEach((track) => {
+      peerConnection.addTrack(track, stream);
+     });
+
+     peerConnection.ontrack = (event) => {
+         if(event.streams && event.streams[0]) {
+          onRemoteStram(event.streams[0]);
+         }
+     };
+
+     const callRef = doc (db, "calls", callId);
+     const callerCandidatesRef = collection (
+      callRef,
+      "callerCandidates"
+     );
+
+     peerConnection.onicecandidate = async (event) => {
+      if(event.candidate) {
+        await addDoc (
+          callerCandidatesRef,
+          event.candidate.toJSON()
+        );
+      }
+     };
+
+     const offer = await peerConnection.createOffer(offer);
+
+     await peerConnection.setLocalDescription(offer);
+
+     await setDoc(callRef,
+      {
+        callerId,
+        receiverId,
+        status : "calling",
+        offer : {
+          type: offer.type,
+          sdb:offer.sdp,
+        },
+
+        createdAt: Date.now(),
+  });
+
+  return peerConnection;
 }
