@@ -601,7 +601,7 @@ body {
   flex-direction: column;
   overflow: hidden;
 
-    background-image: url(./assets/60edf2168e2ecbf576419af3d5e1e92ce7e048ed\ \(2\).png);
+  background-image: url("/src/assets/chat-background.png");
   background-color: #8BABD8;
   background-position: center;
   background-repeat: no-repeat;

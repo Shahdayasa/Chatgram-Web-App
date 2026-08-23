@@ -29,54 +29,53 @@ export async function getAudioStream() {
 }
 
 export async function createCall(
-callId,
-callerId,
-receiverId,
-stream,
-onRemoteStram
-){
+  callId,
+  callerId,
+  receiverId,
+  stream,
+  onRemoteStream
+) {
+  const peerConnection = createPeerConnection();
 
-  const peerConnection = createPeerConnection ();
-     stream.getTracks().forEach((track) => {
-      peerConnection.addTrack(track, stream);
-     });
+  stream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, stream);
+  });
 
-     peerConnection.ontrack = (event) => {
-         if(event.streams && event.streams[0]) {
-          onRemoteStram(event.streams[0]);
-         }
-     };
+  peerConnection.ontrack = (event) => {
+    if (event.streams && event.streams[0]) {
+      onRemoteStream(event.streams[0]);
+    }
+  };
 
-     const callRef = doc (db, "calls", callId);
-     const callerCandidatesRef = collection (
-      callRef,
-      "callerCandidates"
-     );
+  const callRef = doc(db, "calls", callId);
 
-     peerConnection.onicecandidate = async (event) => {
-      if(event.candidate) {
-        await addDoc (
-          callerCandidatesRef,
-          event.candidate.toJSON()
-        );
-      }
-     };
+  const callerCandidatesRef = collection(
+    callRef,
+    "callerCandidates"
+  );
 
-     const offer = await peerConnection.createOffer(offer);
+  peerConnection.onicecandidate = async (event) => {
+    if (event.candidate) {
+      await addDoc(
+        callerCandidatesRef,
+        event.candidate.toJSON()
+      );
+    }
+  };
 
-     await peerConnection.setLocalDescription(offer);
+  const offer = await peerConnection.createOffer();
 
-     await setDoc(callRef,
-      {
-        callerId,
-        receiverId,
-        status : "calling",
-        offer : {
-          type: offer.type,
-          sdb:offer.sdp,
-        },
+  await peerConnection.setLocalDescription(offer);
 
-        createdAt: Date.now(),
+  await setDoc(callRef, {
+    callerId,
+    receiverId,
+    status: "calling",
+    offer: {
+      type: offer.type,
+      sdp: offer.sdp,
+    },
+    createdAt: Date.now(),
   });
 
   return peerConnection;
