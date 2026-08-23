@@ -80,3 +80,21 @@ export async function createCall(
 
   return peerConnection;
 }
+export function listenForAnswer(callId, peerConnection) {
+  const callRef = doc(db, "calls", callId);
+
+  return onSnapshot(callRef, async (snapshot) => {
+    const data = snapshot.data();
+
+    if (!data) return;
+
+    if (
+      data.answer &&
+      !peerConnection.currentRemoteDescription
+    ) {
+      const answer = new RTCSessionDescription(data.answer);
+
+      await peerConnection.setRemoteDescription(answer);
+    }
+  });
+}
