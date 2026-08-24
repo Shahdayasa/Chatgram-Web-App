@@ -346,6 +346,22 @@ export function Chat() {
     }
   };
 
+  const handleRejectCall = async () => {
+    if(!incomingCall) return;
+
+    try 
+   {
+     await rejectCall(
+      incomingCall.callId
+    );
+    setIncomingCall(null);
+   } catch (error) {
+    console.error(
+      "Error rejecting call:",
+      error
+    );
+   }
+  };
 
   return (
     <div className="container">
