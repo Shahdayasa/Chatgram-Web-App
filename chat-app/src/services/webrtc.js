@@ -184,3 +184,33 @@ onRemoteStream
   });
   return peerConnection;
 }
+
+export function listenForCallerCandidates(
+  callId,
+  peerConnection
+)
+
+{
+  const callRef = doc(db, "calls" , callId);
+
+  const callerCandidatesRef = collection(
+    callRef,
+    "callerCandidates"
+  );
+
+  return onSnapshot(
+    callerCandidatesRef,
+    (snapshot) => 
+    {
+      snapshot.docChanges().forEach((change)=>{
+        if(change.type === "added") {
+          const candidate = new RTCIceCandidate(
+            change.doc.data()
+          );
+
+          peerConnection.addIceCandidate(candidate);
+        }
+      });
+    }
+  );
+}
