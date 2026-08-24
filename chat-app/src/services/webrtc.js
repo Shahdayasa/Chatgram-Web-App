@@ -22,9 +22,9 @@ export function createPeerConnection () {
   return new RTCPeerConnection(configuration);
 }
 export async function getAudioStream() {
-  return await navigation.mediaDevices.getUserMedia({
+  return await navigator.mediaDevices.getUserMedia({
     audio: true,
-    vedio: false,
+    video: false,
   });
 }
 
@@ -97,4 +97,31 @@ export function listenForAnswer(callId, peerConnection) {
       await peerConnection.setRemoteDescription(answer);
     }
   });
+}
+
+export function listenForReceiverCandidates(
+  callId,
+  peerConnection
+) {
+  const callRef = doc(db, "calls",callId);
+
+  const receiverCandidatesRef = collection (
+    callRef,
+    "receiverCandidates"
+  );
+
+  return onSnapshot (
+    receiverCandidatesRef,
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if(change.type === "added") {
+          const candidate = new RTCIceCandidate(
+            change.doc.data()
+          );
+
+          peerConnection.addIceCandidate(candidate);
+        }
+      });
+    }
+  );
 }

@@ -364,72 +364,74 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
         </div>
       )}
 
-      <div className="messages" ref={messagesContainerRef}>
-        {messages.map((message) => {
-          const isMyMessage = message.senderId === currentUser?.uid;
+    <div className="messages" ref={messagesContainerRef}>
+  <div className="messages-content">
+    {messages.map((message) => {
+      const isMyMessage = message.senderId === currentUser?.uid;
 
-          const isCurrentMatch =
-            chatSearch.trim() &&
-            searchMatches.length > 0 &&
-            searchMatches[currentMatchIndex]?.id === message.id;
+      const isCurrentMatch =
+        chatSearch.trim() &&
+        searchMatches.length > 0 &&
+        searchMatches[currentMatchIndex]?.id === message.id;
 
-          return (
-            <div
-              key={message.id}
-              ref={(el) => (messageRefs.current[message.id] = el)}
-              className={
-                isMyMessage
-                  ? "message-row my-message-row"
-                  : "message-row other-message-row"
-              }
-            >
-              {!isMyMessage && (
-                <div className="message-avatar">
-                  {renderAvatar(
-                    selectedUser.avatar,
-                    selectedUser.name,
-                    selectedUser.name
-                  )}
-                </div>
-              )}
-
-              <div
-                className={
-                  (isMyMessage
-                    ? "message my-message"
-                    : "message other-message") +
-                  (isCurrentMatch ? " message-highlighted" : "")
-                }
-              >
-                <p>{message.text}</p>
-
-                <span>
-                  {message.createdAt?.toDate
-                    ? message.createdAt.toDate().toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : ""}
-                </span>
-              </div>
-
-              {isMyMessage && (
-                <div className="message-avatar">
-                  {renderAvatar(
-                    avatar,
-                    currentUserName ||
-                      currentUser?.displayName ||
-                      currentUser?.email,
-                    "You"
-                  )}
-                </div>
+      return (
+        <div
+          key={message.id}
+          ref={(el) => (messageRefs.current[message.id] = el)}
+          className={
+            isMyMessage
+              ? "message-row my-message-row"
+              : "message-row other-message-row"
+          }
+        >
+          {!isMyMessage && (
+            <div className="message-avatar">
+              {renderAvatar(
+                selectedUser.avatar,
+                selectedUser.name,
+                selectedUser.name
               )}
             </div>
-          );
-        })}
+          )}
 
-        <div ref={messagesEndRef} />
-      </div>
+          <div
+            className={
+              (isMyMessage
+                ? "message my-message"
+                : "message other-message") +
+              (isCurrentMatch ? " message-highlighted" : "")
+            }
+          >
+            <p>{message.text}</p>
+
+            <span>
+              {message.createdAt?.toDate
+                ? message.createdAt.toDate().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""}
+            </span>
+          </div>
+
+          {isMyMessage && (
+            <div className="message-avatar">
+              {renderAvatar(
+                avatar,
+                currentUserName ||
+                  currentUser?.displayName ||
+                  currentUser?.email,
+                "You"
+              )}
+            </div>
+          )}
+        </div>
+      );
+    })}
+
+    <div ref={messagesEndRef} />
+  </div>
+</div>
 
       {isBlocked ? (
         <div className="blocked-message">
