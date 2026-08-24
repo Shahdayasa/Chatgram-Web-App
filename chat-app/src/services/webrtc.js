@@ -125,3 +125,62 @@ export function listenForReceiverCandidates(
     }
   );
 }
+
+export async function acceptCall (
+callId,
+stream,
+onRemoteStream
+) {
+  const callRef = doc (db,"calls",callId);
+  const callSnapShot = await getDoc (callRef);
+
+  if(!callSnapShot.exists()) {
+    throw new Error("Call does not exist");
+  }
+
+  const callData = callSnapShot.data();
+  const peerConnection = createPeerConnection();
+
+  stream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track,stream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    if (event.streams && event.streams[0]) {
+      onRemoteStream (event.streams[0]);
+    }
+  };
+
+  const receiverCandidatesRef = collection (
+    callRef,
+    "receiverCandidates"
+  );
+
+  peerConnection.onicecandidate = async (event) => {
+    if(event.candidate) {
+      await addDoc (
+        receiverCandidatesRef,
+        event.candidate.toJSON()
+      );
+    }
+  };
+
+  const offer = callData.offer;
+
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription (offer)
+  );
+
+  const answer = await peerConnection.createAnswer();
+
+  await peerConnection.setLocalDescription(answer);
+
+  await updateDoc(callRef, {
+    answer: {
+      type: answer.type,
+      sdp: answer.sdp,
+    },
+    status : "connected",
+  });
+  return peerConnection;
+}
