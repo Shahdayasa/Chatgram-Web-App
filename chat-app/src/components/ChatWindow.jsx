@@ -383,6 +383,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
             isMyMessage
               ? "message-row my-message-row"
               : "message-row other-message-row"
+              
           }
         >
           {!isMyMessage && (

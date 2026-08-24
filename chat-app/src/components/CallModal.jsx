@@ -3,33 +3,36 @@ export default function CallModal({
   callState,
   onEndCall,
 }) {
+  const isConnected = callState === "connected";
 
-    const isConnected = callState === "connected";
   return (
     <div className="call-modal-overlay">
       <div className="call-modal">
-        <h2>{isConnected ? "Call Connected" : "Calling..."}</h2>
+
+        <h2>
+          {isConnected ? "Call Connected" : "Calling..."}
+        </h2>
 
         <div className="call-avatar">
-          {selectedUser?.avatar? (
-            <img 
-            src = {selectedUser?.avatar}
-            alt= {selectedUser?.name || "User"}
-            className="call-avatar-image"
+          {selectedUser?.avatar ? (
+            <img
+              src={selectedUser.avatar}
+              alt={selectedUser.name || "User"}
+              className="call-avatar-image"
             />
           ) : (
-         selectedUser?.name?.charAt(0)?.toUpperCase() || "?"
+            selectedUser?.name?.charAt(0)?.toUpperCase() || "?"
           )}
         </div>
 
-        <h3>{selectedUser?.name || "Unkown User"}</h3>
+        <h3>
+          {selectedUser?.name || "Unknown User"}
+        </h3>
 
         <p>
-            {
-                isConnected
-                ? "connected"
-                : "Waiting for answer..."
-            }
+          {isConnected
+            ? "Connected"
+            : "Waiting for answer..."}
         </p>
 
         <button
@@ -39,6 +42,7 @@ export default function CallModal({
         >
           End Call
         </button>
+
       </div>
     </div>
   );

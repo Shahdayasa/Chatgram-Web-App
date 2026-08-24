@@ -1075,8 +1075,8 @@ textarea {
 }
 
 .start-icon {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
 
   margin: 0 auto 20px;
 
@@ -1085,8 +1085,6 @@ textarea {
   justify-content: center;
 
   border-radius: 50%;
-
-  background-color: #ffffffff;
 
   font-size: 38px;
 }
@@ -2289,6 +2287,98 @@ flex-direction: column;
   justify-content: center;
   background: black;
   
+}
+
+
+.call-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.call-modal {
+  width: 320px;
+  padding: 30px 25px;
+  border-radius: 20px;
+  background: white;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.call-avatar {
+  width: 90px;
+  height: 90px;
+  margin: 20px auto;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d9e2f3;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.call-avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.call-modal h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.call-modal h3 {
+  margin: 10px 0;
+  font-size: 19px;
+}
+
+.call-modal p {
+  margin: 8px 0 20px;
+  color: #707991;
+}
+
+.end-call-button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #e74c3c;
+  color: white;
+  font-size: 15px;
+}
+
+.call-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.reject-call-button,
+.accept-call-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 15px;
+}
+
+.reject-call-button {
+  background: #e74c3c;
+}
+
+.accept-call-button {
+  background: #27ae60;
 }
 
 @media (max-width: 680px) {

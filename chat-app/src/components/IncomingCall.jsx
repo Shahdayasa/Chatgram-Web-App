@@ -6,13 +6,14 @@ export default function IncomingCall({
   return (
     <div className="call-modal-overlay">
       <div className="call-modal">
+
         <h2>Incoming Call</h2>
 
         <div className="call-avatar">
           {caller?.avatar ? (
             <img
               src={caller.avatar}
-              alt={caller?.name || "Caller"}
+              alt={caller.name || "Caller"}
               className="call-avatar-image"
             />
           ) : (
@@ -20,11 +21,16 @@ export default function IncomingCall({
           )}
         </div>
 
-        <h3>{caller?.name  || "Unkown User"}</h3>
+        <h3>
+          {caller?.name || "Unknown User"}
+        </h3>
 
-        <p>Incoming audio call...</p>
+        <p>
+          Incoming audio call...
+        </p>
 
         <div className="call-actions">
+
           <button
             type="button"
             className="reject-call-button"
@@ -40,7 +46,9 @@ export default function IncomingCall({
           >
             Accept
           </button>
+
         </div>
+
       </div>
     </div>
   );

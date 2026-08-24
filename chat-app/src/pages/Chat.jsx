@@ -249,67 +249,75 @@ export function Chat() {
     return  () => unsubscribe();
   },[users]);
 
-  const handleCall = async () => {
-    if (
-      !selectedUser ||
-      !auth.currentUser || 
-      callState
-    ) {
-      return;
-    }
+const handleCall = async () => {
+  if (!selectedUser || !auth.currentUser || callState) {
+    return;
+  }
 
-    try {
-      const stream = await getAudioStream();
+  try {
+    console.log("CALL BUTTON CLICKED");
 
-      const callRef = doc(
-        collection(db, "calls")
-      );
+    const stream = await getAudioStream();
 
-      const pc = await createCall(
-        callRef.id,
-        auth.currentUser.uid,
-        selectedUser.uid,
-        stream,
-        (remoteAudioStream) => {
-          setRemoteStream(
-            remoteAudioStream
-          );
+    console.log("Microphone access granted");
+
+    const callRef = doc(collection(db, "calls"));
+    const newCallId = callRef.id;
+
+    console.log("Call ID:", newCallId);
+
+    const pc = await createCall(
+      newCallId,
+      auth.currentUser.uid,
+      selectedUser.uid,
+      stream,
+      (remoteAudioStream) => {
+        console.log("Remote audio received");
+        setRemoteStream(remoteAudioStream);
+      }
+    );
+
+    setCallId(newCallId);
+    setCallState("calling");
+    setLocalStream(stream);
+    setPeerConnection(pc);
+
+    console.log("Call state set to calling");
+
+    listenForAnswer(
+      newCallId,
+      pc,
+      (status) => {
+        console.log("CALL STATUS:", status);
+
+        if (
+          status === "rejected" ||
+          status === "ended"
+        ) {
+          cleanupCall();
+          return;
         }
-      );
 
-      setCallId(callRef.id);
-      setCallState("calling");
-      setLocalStream(stream);
-      setPeerConnection(pc);
-
-      listenForAnswer(
-        callRef.id,
-        pc,
-        (status) => {
-          if (status === "rejected") {
-            cleanupCall();
-            return;
-          }
-     if (status === "ended") {
-            cleanupCall();
-            return;
-          }
-           setCallState("connected");
+        if (status === "connected") {
+          setCallState("connected");
         }
-      );
+      }
+    );
 
-      listenForReceiverCandidates(
-        callRef.id,
-        pc
-      );
-    }  catch (error) {
-         console.error(
-        "Error starting call:",
-        error
-      );
-      cleanupCall();
-    }
-  };
+    listenForReceiverCandidates(
+      newCallId,
+      pc
+    );
+
+  } catch (error) {
+    console.error(
+      "Error starting call:",
+      error
+    );
+
+    cleanupCall();
+  }
+};
 
   const handleAcceptCall = async () => {
     if (!incomingCall) return;
@@ -363,6 +371,43 @@ export function Chat() {
    }
   };
 
+  const handleEndCall = async () => {
+    if(callId) {
+
+    try 
+   {
+     await endCall(callId);
+    setIncomingCall(null);
+   } catch (error) {
+    console.error(
+      "Error ending call:",
+      error
+    );
+   }
+    }
+    cleanupCall();
+  };
+
+const cleanupCall = () => {
+  if (peerConnection) {
+    peerConnection.close();
+  }
+
+  if(localStream) {
+    localStream.getTracks().forEach(
+      (track) => {
+        track.stop();
+      }
+    );
+  }
+
+  setPeerConnection(null);
+  setLocalStream(null);
+  setRemoteStream(null);
+  setCallId(null);
+  setCallState(null);
+};
+   
   return (
     <div className="container">
 
@@ -389,10 +434,34 @@ export function Chat() {
           selectedUser={selectedUser}
           messages={messages}
           onSend={handleSend}
+          onCall={handleCall}
         />
-
       </div>
+{callState && selectedUser && (
+ <CallModal
+   selectedUser={selectedUser}
+   callState={callState}
+   onEndCall={handleEndCall}
+ />
+)}
+{incomingCall && (
+  <IncomingCall 
+   caller={incomingCall.caller} 
+   onAccept={handleAcceptCall}
+   onReject={handleRejectCall}
+    />
+)}
 
+{remoteStream && (
+  <audio 
+  autoPlay
+  ref={(audio) => {
+    if(audio) {
+      audio.srcObject = remoteStream;
+    }
+  }}
+  />
+)}
     </div>
   );
 }

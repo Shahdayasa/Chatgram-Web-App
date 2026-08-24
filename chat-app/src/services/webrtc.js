@@ -1,4 +1,4 @@
-import { auth, db } from "../firebase/firebase";
+import { db } from "../firebase/firebase";
 
 import {
   doc,
@@ -18,9 +18,10 @@ const configuration = {
   ],
 };
 
-export function createPeerConnection () {
+export function createPeerConnection() {
   return new RTCPeerConnection(configuration);
 }
+
 export async function getAudioStream() {
   return await navigator.mediaDevices.getUserMedia({
     audio: true,
@@ -80,7 +81,12 @@ export async function createCall(
 
   return peerConnection;
 }
-export function listenForAnswer(callId, peerConnection) {
+
+export function listenForAnswer(
+  callId,
+  peerConnection,
+  onStatusChange
+) {
   const callRef = doc(db, "calls", callId);
 
   return onSnapshot(callRef, async (snapshot) => {
@@ -92,29 +98,57 @@ export function listenForAnswer(callId, peerConnection) {
       data.answer &&
       !peerConnection.currentRemoteDescription
     ) {
-      const answer = new RTCSessionDescription(data.answer);
+      try {
+        const answer = new RTCSessionDescription(data.answer);
 
-      await peerConnection.setRemoteDescription(answer);
+        await peerConnection.setRemoteDescription(answer);
+
+        console.log("Remote answer received");
+
+        if (onStatusChange) {
+          onStatusChange("connected");
+        }
+      } catch (error) {
+        console.error(
+          "Error setting remote answer:",
+          error
+        );
+      }
+    }
+
+    if (data.status === "rejected") {
+      console.log("Call rejected");
+
+      if (onStatusChange) {
+        onStatusChange("rejected");
+      }
+    }
+
+    if (data.status === "ended") {
+      console.log("Call ended");
+
+      if (onStatusChange) {
+        onStatusChange("ended");
+      }
     }
   });
 }
-
 export function listenForReceiverCandidates(
   callId,
   peerConnection
 ) {
-  const callRef = doc(db, "calls",callId);
+  const callRef = doc(db, "calls", callId);
 
-  const receiverCandidatesRef = collection (
+  const receiverCandidatesRef = collection(
     callRef,
     "receiverCandidates"
   );
 
-  return onSnapshot (
+  return onSnapshot(
     receiverCandidatesRef,
     (snapshot) => {
       snapshot.docChanges().forEach((change) => {
-        if(change.type === "added") {
+        if (change.type === "added") {
           const candidate = new RTCIceCandidate(
             change.doc.data()
           );
@@ -126,50 +160,52 @@ export function listenForReceiverCandidates(
   );
 }
 
-export async function acceptCall (
-callId,
-stream,
-onRemoteStream
+export async function acceptCall(
+  callId,
+  stream,
+  onRemoteStream
 ) {
-  const callRef = doc (db,"calls",callId);
-  const callSnapShot = await getDoc (callRef);
+  const callRef = doc(db, "calls", callId);
 
-  if(!callSnapShot.exists()) {
+  const callSnapshot = await getDoc(callRef);
+
+  if (!callSnapshot.exists()) {
     throw new Error("Call does not exist");
   }
 
-  const callData = callSnapShot.data();
+  const callData = callSnapshot.data();
+
   const peerConnection = createPeerConnection();
 
   stream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track,stream);
+    peerConnection.addTrack(track, stream);
   });
 
   peerConnection.ontrack = (event) => {
     if (event.streams && event.streams[0]) {
-      onRemoteStream (event.streams[0]);
+      onRemoteStream(event.streams[0]);
     }
   };
 
-  const receiverCandidatesRef = collection (
+  const receiverCandidatesRef = collection(
     callRef,
     "receiverCandidates"
   );
 
   peerConnection.onicecandidate = async (event) => {
-    if(event.candidate) {
-      await addDoc (
+    if (event.candidate) {
+      await addDoc(
         receiverCandidatesRef,
         event.candidate.toJSON()
       );
     }
   };
 
-  const offer = callData.offer;
-
-  await peerConnection.setRemoteDescription(
-    new RTCSessionDescription (offer)
+  const offer = new RTCSessionDescription(
+    callData.offer
   );
+
+  await peerConnection.setRemoteDescription(offer);
 
   const answer = await peerConnection.createAnswer();
 
@@ -180,18 +216,17 @@ onRemoteStream
       type: answer.type,
       sdp: answer.sdp,
     },
-    status : "connected",
+    status: "connected",
   });
+
   return peerConnection;
 }
 
 export function listenForCallerCandidates(
   callId,
   peerConnection
-)
-
-{
-  const callRef = doc(db, "calls" , callId);
+) {
+  const callRef = doc(db, "calls", callId);
 
   const callerCandidatesRef = collection(
     callRef,
@@ -200,10 +235,9 @@ export function listenForCallerCandidates(
 
   return onSnapshot(
     callerCandidatesRef,
-    (snapshot) => 
-    {
-      snapshot.docChanges().forEach((change)=>{
-        if(change.type === "added") {
+    (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
           const candidate = new RTCIceCandidate(
             change.doc.data()
           );
@@ -215,21 +249,18 @@ export function listenForCallerCandidates(
   );
 }
 
-export async function rejectCall (callId) {
-
-  const callRef = doc(db, "callls",callId);
+export async function rejectCall(callId) {
+  const callRef = doc(db, "calls", callId);
 
   await updateDoc(callRef, {
     status: "rejected",
   });
 }
 
-export async function endCall (callId) {
-
-  const callRef = doc(db, "callls",callId);
+export async function endCall(callId) {
+  const callRef = doc(db, "calls", callId);
 
   await updateDoc(callRef, {
     status: "ended",
   });
 }
-
