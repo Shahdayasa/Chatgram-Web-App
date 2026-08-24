@@ -115,22 +115,6 @@ export function listenForAnswer(
         );
       }
     }
-
-    if (data.status === "rejected") {
-      console.log("Call rejected");
-
-      if (onStatusChange) {
-        onStatusChange("rejected");
-      }
-    }
-
-    if (data.status === "ended") {
-      console.log("Call ended");
-
-      if (onStatusChange) {
-        onStatusChange("ended");
-      }
-    }
   });
 }
 export function listenForReceiverCandidates(
@@ -160,67 +144,25 @@ export function listenForReceiverCandidates(
   );
 }
 
-export async function acceptCall(
-  callId,
-  stream,
-  onRemoteStream
-) {
+
+export function listenForCallStatus(callId, onStatusChange) {
   const callRef = doc(db, "calls", callId);
 
-  const callSnapshot = await getDoc(callRef);
+  return onSnapshot(callRef, (snapshot) => {
+    const data = snapshot.data();
 
-  if (!callSnapshot.exists()) {
-    throw new Error("Call does not exist");
-  }
+    if (!data) return;
 
-  const callData = callSnapshot.data();
-
-  const peerConnection = createPeerConnection();
-
-  stream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, stream);
-  });
-
-  peerConnection.ontrack = (event) => {
-    if (event.streams && event.streams[0]) {
-      onRemoteStream(event.streams[0]);
+    if (data.status === "ended") {
+      onStatusChange("ended");
     }
-  };
 
-  const receiverCandidatesRef = collection(
-    callRef,
-    "receiverCandidates"
-  );
-
-  peerConnection.onicecandidate = async (event) => {
-    if (event.candidate) {
-      await addDoc(
-        receiverCandidatesRef,
-        event.candidate.toJSON()
-      );
+    if (data.status === "rejected") {
+      onStatusChange("rejected");
     }
-  };
-
-  const offer = new RTCSessionDescription(
-    callData.offer
-  );
-
-  await peerConnection.setRemoteDescription(offer);
-
-  const answer = await peerConnection.createAnswer();
-
-  await peerConnection.setLocalDescription(answer);
-
-  await updateDoc(callRef, {
-    answer: {
-      type: answer.type,
-      sdp: answer.sdp,
-    },
-    status: "connected",
   });
-
-  return peerConnection;
 }
+
 
 export function listenForCallerCandidates(
   callId,

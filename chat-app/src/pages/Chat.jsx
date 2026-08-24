@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -10,8 +10,6 @@ import {
   doc,
   setDoc,
 } from "firebase/firestore";
-
-
 
 import { Navbar } from "../components/Navbar";
 import { ChatWindow } from "../components/ChatWindow";
@@ -27,6 +25,7 @@ import {
   listenForAnswer,
   listenForReceiverCandidates,
   listenForCallerCandidates,
+  listenForCallStatus,
   rejectCall,
   endCall,
 } from "../services/webrtc";
@@ -37,17 +36,19 @@ export function Chat() {
   const [messages, setMessages] = useState([]);
   const [previews, setPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
- 
-  const [callId,setCallId] = useState(null);
-  const [callState,setCallState] = useState(null);
-  const [incomingCall,setIncomingCall] = useState(null);
-  const [peerConnection,setPeerConnection] = useState(null);
-  const [localStream,setLocalStream] = useState(null);
-  const [remoteStream,setRemoteStream] = useState(null);
+
+  const [callId, setCallId] = useState(null);
+  const [callState, setCallState] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [peerConnection, setPeerConnection] = useState(null);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
+  const peerConnectionRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const callIdRef = useRef(null);
   useEffect(() => {
-    if(!remoteStream) {
+    if (!remoteStream) {
       setIsSpeaking(false);
       return;
     }
@@ -55,8 +56,7 @@ export function Chat() {
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
 
-    analyser.fftsize = 256;
-
+    analyser.fftSize = 256;
     const source = audioContext.createMediaStreamSource(remoteStream);
     source.connect(analyser);
 
@@ -69,7 +69,7 @@ export function Chat() {
 
       let sum = 0;
 
-      for(let i=0; i< dataArray.length; i++) {
+      for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i];
       }
 
@@ -88,7 +88,7 @@ export function Chat() {
       analyser.disconnect();
       audioContext.close();
     };
-  },[remoteStream]);
+  }, [remoteStream]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -108,19 +108,18 @@ export function Chat() {
               user.id !== auth.currentUser?.uid &&
               user.name &&
               user.email &&
-              user.uid
+              user.uid,
           );
 
         setUsers(usersData);
       },
       (error) => {
         console.error("Error getting users:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, []);
-
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -130,7 +129,7 @@ export function Chat() {
     const messageQuery = query(
       collection(db, "messages"),
       where("participants", "array-contains", currentUserId),
-      orderBy("createdAt", "asc")
+      orderBy("createdAt", "asc"),
     );
 
     const unsubscribe = onSnapshot(
@@ -162,7 +161,7 @@ export function Chat() {
               (message.senderId === currentUserId &&
                 message.receiverId === selectedUser.uid) ||
               (message.senderId === selectedUser.uid &&
-                message.receiverId === currentUserId)
+                message.receiverId === currentUserId),
           );
 
           setMessages(selectedMessages);
@@ -172,19 +171,14 @@ export function Chat() {
       },
       (error) => {
         console.error("Error getting messages:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, [selectedUser]);
 
-  
   const handleSend = async (text) => {
-    if (
-      !selectedUser ||
-      !auth.currentUser ||
-      !text.trim()
-    ) {
+    if (!selectedUser || !auth.currentUser || !text.trim()) {
       return;
     }
 
@@ -196,10 +190,7 @@ export function Chat() {
 
         receiverId: selectedUser.uid,
 
-        participants: [
-          auth.currentUser.uid,
-          selectedUser.uid,
-        ],
+        participants: [auth.currentUser.uid, selectedUser.uid],
 
         createdAt: serverTimestamp(),
       });
@@ -209,7 +200,6 @@ export function Chat() {
       console.error("Error sending message:", error);
     }
   };
-
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -228,7 +218,7 @@ export function Chat() {
       },
       {
         merge: true,
-      }
+      },
     ).catch((error) => {
       console.error("Error setting user online:", error);
     });
@@ -242,103 +232,89 @@ export function Chat() {
         },
         {
           merge: true,
-        }
+        },
       ).catch((error) => {
         console.error("Error setting user offline:", error);
       });
     };
   }, []);
 
-  useEffect(()=> {
+  useEffect(() => {
     const currentUser = auth.currentUser;
-    if(!currentUser) return;
+    if (!currentUser) return;
 
-    const callsQuery = query (
-      collection(db,"calls"),
-      where (
-        "receiverId",
-        "==",
-        currentUser.uid
-      ),
-      where ("status", "==", "calling")
+    const callsQuery = query(
+      collection(db, "calls"),
+      where("receiverId", "==", currentUser.uid),
+      where("status", "==", "calling"),
     );
 
-    const unsubscribe = onSnapshot (
+    const unsubscribe = onSnapshot(
       callsQuery,
       (snapshot) => {
-        if( snapshot.empty) {
+        if (snapshot.empty) {
           setIncomingCall(null);
           return;
         }
-          const callDoc = snapshot.docs[0];
-          const callData = callDoc.data();
-         
-         const caller = users.find (
-          (user) => 
-            user.uid === callData.callerId
-         );
-         if (!caller) return;
-        
-         setIncomingCall ({
+        const callDoc = snapshot.docs[0];
+        const callData = callDoc.data();
+
+        const caller = users.find((user) => user.uid === callData.callerId);
+        if (!caller) return;
+
+        setIncomingCall({
           callId: callDoc.id,
           caller,
-         });
+        });
       },
-    (error) => {
-      console.error (
-        "Error Listening for incoming calls:",
-        error
-      );
+      (error) => {
+        console.error("Error Listening for incoming calls:", error);
+      },
+    );
+    return () => unsubscribe();
+  }, [users]);
+
+  const handleCall = async () => {
+    if (!selectedUser || !auth.currentUser || callState) {
+      return;
     }
-    );
-    return  () => unsubscribe();
-  },[users]);
 
-const handleCall = async () => {
-  if (!selectedUser || !auth.currentUser || callState) {
-    return;
-  }
+    try {
+      console.log("CALL BUTTON CLICKED");
 
-  try {
-    console.log("CALL BUTTON CLICKED");
+      const stream = await getAudioStream();
 
-    const stream = await getAudioStream();
+      console.log("Microphone access granted");
 
-    console.log("Microphone access granted");
+      const callRef = doc(collection(db, "calls"));
+      const newCallId = callRef.id;
 
-    const callRef = doc(collection(db, "calls"));
-    const newCallId = callRef.id;
+      console.log("Call ID:", newCallId);
 
-    console.log("Call ID:", newCallId);
+      const pc = await createCall(
+        newCallId,
+        auth.currentUser.uid,
+        selectedUser.uid,
+        stream,
+        (remoteAudioStream) => {
+          console.log("Remote audio received");
+          setRemoteStream(remoteAudioStream);
+        },
+      );
+      peerConnectionRef.current = pc;
+      localStreamRef.current = stream;
+      callIdRef.current = newCallId;
+      setCallId(newCallId);
+      setCallState("calling");
+      setLocalStream(stream);
+      setPeerConnection(pc);
 
-    const pc = await createCall(
-      newCallId,
-      auth.currentUser.uid,
-      selectedUser.uid,
-      stream,
-      (remoteAudioStream) => {
-        console.log("Remote audio received");
-        setRemoteStream(remoteAudioStream);
-      }
-    );
+      console.log("Call state set to calling");
 
-    setCallId(newCallId);
-    setCallState("calling");
-    setLocalStream(stream);
-    setPeerConnection(pc);
-
-    console.log("Call state set to calling");
-
-    listenForAnswer(
-      newCallId,
-      pc,
-      (status) => {
+      listenForAnswer(newCallId, pc, (status) => {
         console.log("CALL STATUS:", status);
 
-        if (
-          status === "rejected" ||
-          status === "ended"
-        ) {
+        if (status === "rejected" || status === "ended") {
           cleanupCall();
           return;
         }
@@ -346,23 +322,22 @@ const handleCall = async () => {
         if (status === "connected") {
           setCallState("connected");
         }
-      }
-    );
+      });
 
-    listenForReceiverCandidates(
-      newCallId,
-      pc
-    );
+      listenForReceiverCandidates(newCallId, pc);
 
-  } catch (error) {
-    console.error(
-      "Error starting call:",
-      error
-    );
+      listenForCallStatus(newCallId, (status) => {
+        if (status === "ended" || status === "rejected") {
+          cleanupCall();
+          setIncomingCall(null);
+        }
+      });
+    } catch (error) {
+      console.error("Error starting call:", error);
 
-    cleanupCall();
-  }
-};
+      cleanupCall();
+    }
+  };
 
   const handleAcceptCall = async () => {
     if (!incomingCall) return;
@@ -373,96 +348,88 @@ const handleCall = async () => {
         incomingCall.callId,
         stream,
         (remoteAudioStream) => {
-          setRemoteStream (
-            remoteAudioStream
-          );
-        }
+          setRemoteStream(remoteAudioStream);
+        },
       );
-
+      peerConnectionRef.current = pc;
+      localStreamRef.current = stream;
+      callIdRef.current = incomingCall.callId;
       setCallId(incomingCall.callId);
       setCallState("connected");
       setLocalStream(stream);
       setPeerConnection(pc);
 
-      listenForCallerCandidates(
-        incomingCall.callId,
-        pc
-      );
+      listenForCallerCandidates(incomingCall.callId, pc);
+
+      listenForCallStatus(incomingCall.callId, (status) => {
+        if (status === "ended" || status === "rejected") {
+          cleanupCall();
+          setIncomingCall(null);
+        }
+      });
 
       setIncomingCall(null);
-    }
-    catch(error) {
-      console.error(
-        "Error acceptong call:",
-        error
-      );
+    } catch (error) {
+      console.error("Error acceptong call:", error);
     }
   };
 
   const handleRejectCall = async () => {
-    if(!incomingCall) return;
+    if (!incomingCall) return;
 
-    try 
-   {
-     await rejectCall(
-      incomingCall.callId
-    );
-    setIncomingCall(null);
-   } catch (error) {
-    console.error(
-      "Error rejecting call:",
-      error
-    );
-   }
+    try {
+      await rejectCall(incomingCall.callId);
+      setIncomingCall(null);
+    } catch (error) {
+      console.error("Error rejecting call:", error);
+    }
   };
 
   const handleEndCall = async () => {
-    if(callId) {
+    const id = callIdRef.current;
 
-    try 
-   {
-     await endCall(callId);
-    setIncomingCall(null);
-   } catch (error) {
-    console.error(
-      "Error ending call:",
-      error
-    );
-   }
+    try {
+      if (id) {
+        await endCall(id);
+      }
+    } catch (error) {
+      console.error("Error ending call:", error);
     }
+
     cleanupCall();
+    setIncomingCall(null);
   };
 
-const cleanupCall = () => {
-  if (peerConnection) {
-    peerConnection.close();
-  }
+  const cleanupCall = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
 
-  if(localStream) {
-    localStream.getTracks().forEach(
-      (track) => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
         track.stop();
-      }
-    );
-  }
+      });
+      localStreamRef.current = null;
+    }
 
-  setPeerConnection(null);
-  setLocalStream(null);
-  setRemoteStream(null);
-  setCallId(null);
-  setCallState(null);
-};
-   
+    callIdRef.current = null;
+
+    setPeerConnection(null);
+    setLocalStream(null);
+    setRemoteStream(null);
+    setCallId(null);
+    setCallState(null);
+    setIsSpeaking(false);
+  };
   return (
     <div className="container">
-
       <div className="list">
-
-      <Navbar
-  searchTerm={searchTerm}
-  setSearchTerm={setSearchTerm}
-  onSelectUser={setSelectedUser}
-/>
+        <Navbar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          onSelectUser={setSelectedUser}
+        />
 
         <Chatlist
           users={users}
@@ -470,11 +437,9 @@ const cleanupCall = () => {
           previews={previews}
           searchTerm={searchTerm}
         />
-
       </div>
 
       <div className="chat-area">
-
         <ChatWindow
           selectedUser={selectedUser}
           messages={messages}
@@ -482,34 +447,32 @@ const cleanupCall = () => {
           onCall={handleCall}
         />
       </div>
-{callState && selectedUser && (
- <CallModal
-   selectedUser={selectedUser}
-   callState={callState}
-   onEndCall={handleEndCall}
- />
-)}
-{incomingCall && (
-  <IncomingCall 
-   caller={incomingCall.caller} 
-   onAccept={handleAcceptCall}
-   onReject={handleRejectCall}
-    />
-)}
+      {callState && selectedUser && (
+        <CallModal
+          selectedUser={selectedUser}
+          callState={callState}
+          onEndCall={handleEndCall}
+          isSpeaking={isSpeaking}
+        />
+      )}
+      {incomingCall && (
+        <IncomingCall
+          caller={incomingCall.caller}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
 
-{remoteStream && (
-  <audio 
-  autoPlay
-  ref={(audio) => {
-    if(audio) {
-      audio.srcObject = remoteStream;
-    }
-  }}
-  />
-)}
+      {remoteStream && (
+        <audio
+          autoPlay
+          ref={(audio) => {
+            if (audio) {
+              audio.srcObject = remoteStream;
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
-
-
- 
