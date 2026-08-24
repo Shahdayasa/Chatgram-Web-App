@@ -16,6 +16,14 @@ import {
   faEllipsisVertical,
   faChevronUp,
   faChevronDown,
+  faCircleInfo,
+  faReply,
+  faCopy,
+  faFaceSmile,
+  faShare,
+  faThumbtack,
+  faStar,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -71,7 +79,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
 const [selectedMessage, setSelectedMessage] = useState(null);
-
+const [contextMenu, setContextMenu] = useState(null); 
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -397,26 +405,26 @@ const [selectedMessage, setSelectedMessage] = useState(null);
             </div>
           )}
 
-          <div
-          onClick={() =>selectedMessage(message)}
-            className={
-              (isMyMessage
-                ? "message my-message"
-                : "message other-message") +
-              (isCurrentMatch ? " message-highlighted" : "")
-            }
-          >
-            <p>{message.text}</p>
+      <div
+  onClick={() => setSelectedMessage(message)}
+  className={
+    (isMyMessage
+      ? "message my-message"
+      : "message other-message") +
+    (isCurrentMatch ? " message-highlighted" : "")
+  }
+>
+  <p>{message.text}</p>
 
-            <span>
-              {message.createdAt?.toDate
-                ? message.createdAt.toDate().toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : ""}
-            </span>
-          </div>
+  <span>
+    {message.createdAt?.toDate
+      ? message.createdAt.toDate().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : ""}
+  </span>
+</div>
 
           {isMyMessage && (
             <div className="message-avatar">
@@ -447,24 +455,37 @@ const [selectedMessage, setSelectedMessage] = useState(null);
     className="message-info"
     onClick={(e) => e.stopPropagation()}
     >
-      <h3>Message Info</h3>
-      <p>
-        <strong>Message:</strong>{" "}
-        {selectedMessage.text}
-      </p>
-    <p>
-      <strong>Time:</strong>{" "}
-      {selectedMessage.createdAt?.toDate
-      ?selectedMessage.createdAt
-      .toDate()
-      .toLocaleDateString()
-      : "Unknown"
-      }
+
+    <p className="select-msg">
+      <span>Reply</span>
+         <span className="icon-info"><FontAwesomeIcon icon={faReply} />
+        </span>
     </p>
-    <button type="button"
-    onClick={()=> setSelectedMessage(null)}>
-       Close
-    </button>
+
+    <p className="select-msg">
+   <span>Pin</span>
+    <span className="icon-info"><FontAwesomeIcon icon={faThumbtack} />
+        </span>
+    </p>
+
+    <p className="select-msg">
+      <span>Star</span>
+        <span className="icon-info"><FontAwesomeIcon icon={faStar} />
+        </span>
+    </p>
+
+      <p className="select-msg">
+   <span>MessageInfo</span> 
+<span className="icon-info"><FontAwesomeIcon icon={faCircleInfo} />
+</span>
+    </p>
+
+    <p className="delete">
+    <span>Delete</span>
+    <span className="icon-info"><FontAwesomeIcon icon={faTrash} />
+</span>
+    </p>
+
       </div>
     </div>
 )}

@@ -2381,6 +2381,87 @@ flex-direction: column;
   background: #27ae60;
 }
 
+.message-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.message-info {
+  width: 200px;
+  max-width: calc(100% - 40px);
+  padding: 20px;
+  border-radius: 16px;
+ background-color: #fff;
+ box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.message-info h3 {
+  margin-top: 0;
+}
+
+.message-info p {
+  height: 30px;
+  border-bottom: 1px #c4c8cb solid;
+}
+
+.delete{
+color: rgb(188, 44, 44);
+position: relative;
+}
+
+
+.icon-info {
+  position: absolute;
+right: 0;
+}
+
+.select-msg{
+  position: relative;
+  display: flex;
+}
+.message-context-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.message-context-menu {
+  position: fixed;
+  transform: translate(-100%, 0);
+  background-color: #233138;
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+.message-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  color: #e9edef;
+  padding: 10px 16px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-context-menu button:hover {
+  background-color: #182229;
+}
+
+.message-context-menu button.danger {
+  color: #f15c6d;
+}
 @media (max-width: 680px) {
   .container {
     flex-direction: column;

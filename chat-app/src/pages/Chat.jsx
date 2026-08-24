@@ -43,7 +43,52 @@ export function Chat() {
   const [incomingCall,setIncomingCall] = useState(null);
   const [peerConnection,setPeerConnection] = useState(null);
   const [localStream,setLocalStream] = useState(null);
-  const [remoteStream,setRemoteStream] =useState(null);
+  const [remoteStream,setRemoteStream] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  useEffect(() => {
+    if(!remoteStream) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+
+    analyser.fftsize = 256;
+
+    const source = audioContext.createMediaStreamSource(remoteStream);
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    let animationFrame;
+
+    const checkVolume = () => {
+      analyser.getByteFrequencyData(dataArray);
+
+      let sum = 0;
+
+      for(let i=0; i< dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+
+      const average = sum / dataArray.length;
+
+      setIsSpeaking(average > 10);
+
+      animationFrame = requestAnimationFrame(checkVolume);
+    };
+
+    checkVolume();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      source.disconnect();
+      analyser.disconnect();
+      audioContext.close();
+    };
+  },[remoteStream]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(

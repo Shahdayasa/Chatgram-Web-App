@@ -2,6 +2,7 @@ export default function CallModal({
   selectedUser,
   callState,
   onEndCall,
+  isSpeaking,
 }) {
   const isConnected = callState === "connected";
 
@@ -35,6 +36,16 @@ export default function CallModal({
             : "Waiting for answer..."}
         </p>
 
+{isConnected && (
+    <div
+    className={`speaking-indicator ${isSpeaking ? "active" : ""}`}>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span> 
+    </div>
+)}
         <button
           type="button"
           className="end-call-button"
