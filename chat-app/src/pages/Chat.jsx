@@ -360,14 +360,12 @@ export function Chat() {
       setPeerConnection(pc);
 
       listenForCallerCandidates(incomingCall.callId, pc);
-
       listenForCallStatus(incomingCall.callId, (status) => {
         if (status === "ended" || status === "rejected") {
           cleanupCall();
           setIncomingCall(null);
         }
       });
-
       setIncomingCall(null);
     } catch (error) {
       console.error("Error acceptong call:", error);
