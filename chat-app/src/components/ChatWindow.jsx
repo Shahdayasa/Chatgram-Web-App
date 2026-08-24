@@ -53,7 +53,7 @@ const getLastSeen = (timestamp) => {
   return `Last seen ${lastSeenDate.toLocaleDateString()}`;
 };
 
-export function ChatWindow({ selectedUser, messages, onSend }) {
+export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const currentUser = auth.currentUser;
 
   const [showMore, setShowMore] = useState(false);
@@ -320,6 +320,7 @@ export function ChatWindow({ selectedUser, messages, onSend }) {
               className="chat-phone-button"
               aria-label="Call"
               type="button"
+              onClick={onCall}
             >
               <svg
                 width="40"
