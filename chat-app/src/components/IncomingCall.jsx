@@ -9,15 +9,24 @@ export default function IncomingCall({
         <h2>Incoming Call</h2>
 
         <div className="call-avatar">
-          {caller?.name?.charAt(0)?.toUpperCase()}
+          {caller?.avatar ? (
+            <img
+              src={caller.avatar}
+              alt={caller?.name || "Caller"}
+              className="call-avatar-image"
+            />
+          ) : (
+            caller?.name?.charAt(0)?.toUpperCase() || "?"
+          )}
         </div>
 
-        <h3>{caller?.name}</h3>
+        <h3>{caller?.name  || "Unkown User"}</h3>
 
         <p>Incoming audio call...</p>
 
         <div className="call-actions">
           <button
+            type="button"
             className="reject-call-button"
             onClick={onReject}
           >
@@ -25,6 +34,7 @@ export default function IncomingCall({
           </button>
 
           <button
+            type="button"
             className="accept-call-button"
             onClick={onAccept}
           >
