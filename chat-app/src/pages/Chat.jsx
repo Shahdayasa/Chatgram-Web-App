@@ -27,7 +27,7 @@ import {
   listenForAnswer,
   listenForReceiverCandidates,
   listenForCallerCandidates,
-  rejectCll,
+  rejectCall,
   endCall,
 } from "../services/webrtc";
 
