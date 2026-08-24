@@ -83,8 +83,14 @@ function ContextMenu({ x, y, onClose, children }) {
       left = x - menuRect.width;
     }
 
-    top = Math.max(padding, Math.min(top, window.innerHeight - menuRect.height - padding));
-    left = Math.max(padding, Math.min(left, window.innerWidth - menuRect.width - padding));
+    top = Math.max(
+      padding,
+      Math.min(top, window.innerHeight - menuRect.height - padding),
+    );
+    left = Math.max(
+      padding,
+      Math.min(left, window.innerWidth - menuRect.width - padding),
+    );
 
     setPosition({ top, left });
   }, [x, y]);
@@ -121,8 +127,8 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const messageRefs = useRef({});
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
-const [selectedMessage, setSelectedMessage] = useState(null);
-const [contextMenu, setContextMenu] = useState(null); 
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -154,9 +160,7 @@ const [contextMenu, setContextMenu] = useState(null);
 
   const searchMatches = chatSearch.trim()
     ? messages.filter((message) =>
-        message.text
-          ?.toLowerCase()
-          .includes(chatSearch.toLowerCase().trim())
+        message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()),
       )
     : [];
 
@@ -196,14 +200,14 @@ const [contextMenu, setContextMenu] = useState(null);
   const goToNextMatch = () => {
     if (searchMatches.length === 0) return;
     setCurrentMatchIndex((prev) =>
-      prev + 1 >= searchMatches.length ? 0 : prev + 1
+      prev + 1 >= searchMatches.length ? 0 : prev + 1,
     );
   };
 
   const goToPrevMatch = () => {
     if (searchMatches.length === 0) return;
     setCurrentMatchIndex((prev) =>
-      prev - 1 < 0 ? searchMatches.length - 1 : prev - 1
+      prev - 1 < 0 ? searchMatches.length - 1 : prev - 1,
     );
   };
 
@@ -243,19 +247,18 @@ const [contextMenu, setContextMenu] = useState(null);
     }
   };
 
+  const handleDeleteMessage = async () => {
+    if (!selectedMessage) return;
 
-   const handleDeleteMessage = async () => {
-  if (!selectedMessage) return;
-
-  try {
-    await deleteDoc(doc(db, "messages", selectedMessage.id));
-  } catch (error) {
-    console.error("Error deleting message:", error);
-  } finally {
-    setSelectedMessage(null);
-    setContextMenu(null);
-  }
-};
+    try {
+      await deleteDoc(doc(db, "messages", selectedMessage.id));
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    } finally {
+      setSelectedMessage(null);
+      setContextMenu(null);
+    }
+  };
   const handleSend = (text) => {
     if (isBlocked) {
       return;
@@ -266,9 +269,7 @@ const [contextMenu, setContextMenu] = useState(null);
 
   const renderAvatar = (image, name, alt) => {
     if (image) {
-      return (
-        <img src={image} alt={alt} className="message-avatar-image" />
-      );
+      return <img src={image} alt={alt} className="message-avatar-image" />;
     }
 
     return (
@@ -366,8 +367,8 @@ const [contextMenu, setContextMenu] = useState(null);
                 {isBlocked
                   ? "Blocked"
                   : selectedUser.isOnline
-                  ? "Online"
-                  : getLastSeen(selectedUser.lastSeen)}
+                    ? "Online"
+                    : getLastSeen(selectedUser.lastSeen)}
               </p>
             </div>
           </div>
@@ -420,8 +421,8 @@ const [contextMenu, setContextMenu] = useState(null);
                     {loadingBlock
                       ? "Please wait..."
                       : isBlocked
-                      ? "Unblock User"
-                      : "Block User"}
+                        ? "Unblock User"
+                        : "Block User"}
                   </button>
                 </div>
               )}
@@ -430,36 +431,35 @@ const [contextMenu, setContextMenu] = useState(null);
         </div>
       )}
 
-    <div className="messages" ref={messagesContainerRef}>
-  <div className="messages-content">
-    {messages.map((message) => {
-      const isMyMessage = message.senderId === currentUser?.uid;
+      <div className="messages" ref={messagesContainerRef}>
+        <div className="messages-content">
+          {messages.map((message) => {
+            const isMyMessage = message.senderId === currentUser?.uid;
 
-      const isCurrentMatch =
-        chatSearch.trim() &&
-        searchMatches.length > 0 &&
-        searchMatches[currentMatchIndex]?.id === message.id;
+            const isCurrentMatch =
+              chatSearch.trim() &&
+              searchMatches.length > 0 &&
+              searchMatches[currentMatchIndex]?.id === message.id;
 
-      return (
-        <div
-          key={message.id}
-          ref={(el) => (messageRefs.current[message.id] = el)}
-          className={
-            isMyMessage
-              ? "message-row my-message-row"
-              : "message-row other-message-row"
-              
-          }
-        >
-          {!isMyMessage && (
-            <div className="message-avatar">
-              {renderAvatar(
-                selectedUser.avatar,
-                selectedUser.name,
-                selectedUser.name
-              )}
-            </div>
-          )}
+            return (
+              <div
+                key={message.id}
+                ref={(el) => (messageRefs.current[message.id] = el)}
+                className={
+                  isMyMessage
+                    ? "message-row my-message-row"
+                    : "message-row other-message-row"
+                }
+              >
+                {!isMyMessage && (
+                  <div className="message-avatar">
+                    {renderAvatar(
+                      selectedUser.avatar,
+                      selectedUser.name,
+                      selectedUser.name,
+                    )}
+                  </div>
+                )}
 
 <div
   onContextMenu={(e) => {
@@ -468,11 +468,14 @@ const [contextMenu, setContextMenu] = useState(null);
     setContextMenu({ x: e.clientX, y: e.clientY });
   }}
   className={
-    (isMyMessage
-      ? "message my-message"
-      : "message other-message") +
+    (isMyMessage ? "message my-message" : "message other-message") +
     (isCurrentMatch ? " message-highlighted" : "")
   }
+  style={{
+    transform:
+      selectedMessage?.id === message.id ? "scale(1.06)" : "scale(1)",
+    transition: "transform 0.15s ease",
+  }}
 >
   <p>{message.text}</p>
 
@@ -486,51 +489,55 @@ const [contextMenu, setContextMenu] = useState(null);
   </span>
 </div>
 
-          {isMyMessage && (
-            <div className="message-avatar">
-              {renderAvatar(
-                avatar,
-                currentUserName ||
-                  currentUser?.displayName ||
-                  currentUser?.email,
-                "You"
-              )}
-            </div>
-          )}
+                {isMyMessage && (
+                  <div className="message-avatar">
+                    {renderAvatar(
+                      avatar,
+                      currentUserName ||
+                        currentUser?.displayName ||
+                        currentUser?.email,
+                      "You",
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div ref={messagesEndRef} />
         </div>
-      );
-    })}
+      </div>
 
-    <div ref={messagesEndRef} />
-  </div>
-</div>
-
-{selectedMessage && contextMenu && (
-  <ContextMenu
-    x={contextMenu.x}
-    y={contextMenu.y}
-    onClose={() => {
-      setSelectedMessage(null);
-      setContextMenu(null);
-    }}
-  >
-    <button type="button">
-      <FontAwesomeIcon icon={faReply} /> Reply
-    </button>
-    <button type="button">
-      <FontAwesomeIcon icon={faThumbtack} /> Pin
-    </button>
-    <button type="button">
-      <FontAwesomeIcon icon={faStar} /> Star
-    </button>
-    <button type="button">
-      <FontAwesomeIcon icon={faCircleInfo} /> Message Info
-    </button>
-<button type="button" className="danger" onClick={handleDeleteMessage}>
-  <FontAwesomeIcon icon={faTrash} /> Delete
-</button>
-  </ContextMenu>
-)}
+      {selectedMessage && contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => {
+            setSelectedMessage(null);
+            setContextMenu(null);
+          }}
+        >
+          <button type="button">
+            <FontAwesomeIcon icon={faReply} /> Reply
+          </button>
+          <button type="button">
+            <FontAwesomeIcon icon={faThumbtack} /> Pin
+          </button>
+          <button type="button">
+            <FontAwesomeIcon icon={faStar} /> Star
+          </button>
+          <button type="button">
+            <FontAwesomeIcon icon={faCircleInfo} /> Message Info
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={handleDeleteMessage}
+          >
+            <FontAwesomeIcon icon={faTrash} /> Delete
+          </button>
+        </ContextMenu>
+      )}
       {isBlocked ? (
         <div className="blocked-message">
           <button

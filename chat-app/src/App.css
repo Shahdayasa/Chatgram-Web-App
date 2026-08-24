@@ -615,7 +615,7 @@ body {
   padding: 20px 24px;
   background: transparent;
   overflow-y: auto;
-  overflow-x: hidden;
+   overflow-x: visible;
   scrollbar-width: none;
   box-sizing: border-box;
 }
@@ -1024,6 +1024,8 @@ textarea {
 .message p {
   margin: 0;
 }
+
+
 
 .message span {
   display: block;
@@ -2475,6 +2477,8 @@ right: 0;
 .message-context-menu button.danger {
   color: #f15c6d;
 }
+
+
 
 
 .speaking-indicator {
