@@ -70,6 +70,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const messageRefs = useRef({});
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+const [selectedMessage, setSelectedMessage] = useState(null);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -397,6 +398,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
           )}
 
           <div
+          onClick={() =>selectedMessage(message)}
             className={
               (isMyMessage
                 ? "message my-message"
@@ -434,6 +436,38 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
     <div ref={messagesEndRef} />
   </div>
 </div>
+
+
+{selectedMessage && (
+  <div 
+  className="message-info-overlay"
+  onClick={() =>setSelectedMessage(null)}
+  >
+    <div
+    className="message-info"
+    onClick={(e) => e.stopPropagation()}
+    >
+      <h3>Message Info</h3>
+      <p>
+        <strong>Message:</strong>{" "}
+        {selectedMessage.text}
+      </p>
+    <p>
+      <strong>Time:</strong>{" "}
+      {selectedMessage.createdAt?.toDate
+      ?selectedMessage.createdAt
+      .toDate()
+      .toLocaleDateString()
+      : "Unknown"
+      }
+    </p>
+    <button type="button"
+    onClick={()=> setSelectedMessage(null)}>
+       Close
+    </button>
+      </div>
+    </div>
+)}
 
       {isBlocked ? (
         <div className="blocked-message">
