@@ -11,10 +11,25 @@ import {
   setDoc,
 } from "firebase/firestore";
 
+
+
 import { Navbar } from "../components/Navbar";
 import { ChatWindow } from "../components/ChatWindow";
 import { Chatlist } from "../components/ChatList";
 import { auth, db } from "../firebase/firebase";
+import CallModal from "../components/CallModal";
+import IncomingCall from "../components/IncomingCall";
+
+import {
+  getAudioStream,
+  createCall,
+  acceptCall,
+  listenForAnswer,
+  listenForReceiverCandidates,
+  listenForCallerCandidates,
+  rejectCll,
+  endCall,
+} from "../services/webrtc";
 
 export function Chat() {
   const [users, setUsers] = useState([]);
@@ -22,7 +37,13 @@ export function Chat() {
   const [messages, setMessages] = useState([]);
   const [previews, setPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
-
+ 
+  const [callId,setCallId] = useState(null);
+  const [callState,setCallState] = useState(null);
+  const [incomingCall,setIncomingCall] = useState(null);
+  const [peerConnection,setPeerConnection] = useState(null);
+  const [localStream,setLocalStream] = useState(null);
+  const [remoteStream,setRemoteStream] =useState(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -31,11 +52,6 @@ export function Chat() {
         const usersData = snapshot.docs
           .map((userDoc) => {
             const userData = userDoc.data();
-
-            console.log("USER FROM FIRESTORE:", {
-              id: userDoc.id,
-              ...userData,
-            });
 
             return {
               id: userDoc.id,
@@ -188,7 +204,149 @@ export function Chat() {
     };
   }, []);
 
-  
+  useEffect(()=> {
+    const currentUser = auth.currentUser;
+    if(!currentUser) return;
+
+    const callsQuery = query (
+      collection(db,"calls"),
+      where (
+        "receiverId",
+        "==",
+        currentUser.uid
+      ),
+      where ("status", "==", "calling")
+    );
+
+    const unsubscribe = onSnapshot (
+      callsQuery,
+      (snapshot) => {
+        if( snapshot.empty) {
+          setIncomingCall(null);
+          return;
+        }
+          const callDoc = snapshot.docs[0];
+          const callData = callDoc.data();
+         
+         const caller = users.find (
+          (user) => 
+            user.uid === callData.callerId
+         );
+         if (!caller) return;
+        
+         setIncomingCall ({
+          callId: callDoc.id,
+          caller,
+         });
+      },
+    (error) => {
+      console.error (
+        "Error Listening for incoming calls:",
+        error
+      );
+    }
+    );
+    return  () => unsubscribe();
+  },[users]);
+
+  const handleCall = async () => {
+    if (
+      !selectedUser ||
+      !auth.currentUser || 
+      callState
+    ) {
+      return;
+    }
+
+    try {
+      const stream = await getAudioStream();
+
+      const callRef = doc(
+        collection(db, "calls")
+      );
+
+      const pc = await createCall(
+        callRef.id,
+        auth.currentUser.uid,
+        selectedUser.uid,
+        stream,
+        (remoteAudioStream) => {
+          setRemoteStream(
+            remoteAudioStream
+          );
+        }
+      );
+
+      setCallId(callRef.id);
+      setCallState("calling");
+      setLocalStream(stream);
+      setPeerConnection(pc);
+
+      listenForAnswer(
+        callRef.id,
+        pc,
+        (status) => {
+          if (status === "rejected") {
+            cleanupCall();
+            return;
+          }
+     if (status === "ended") {
+            cleanupCall();
+            return;
+          }
+           setCallState("connected");
+        }
+      );
+
+      listenForReceiverCandidates(
+        callRef.id,
+        pc
+      );
+    }  catch (error) {
+         console.error(
+        "Error starting call:",
+        error
+      );
+      cleanupCall();
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      const stream = await getAudioStream();
+      const pc = await acceptCall(
+        incomingCall.callId,
+        stream,
+        (remoteAudioStream) => {
+          setRemoteStream (
+            remoteAudioStream
+          );
+        }
+      );
+
+      setCallId(incomingCall.callId);
+      setCallState("connected");
+      setLocalStream(stream);
+      setPeerConnection(pc);
+
+      listenForCallerCandidates(
+        incomingCall.callId,
+        pc
+      );
+
+      setIncomingCall(null);
+    }
+    catch(error) {
+      console.error(
+        "Error acceptong call:",
+        error
+      );
+    }
+  };
+
+
   return (
     <div className="container">
 
