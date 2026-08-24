@@ -214,3 +214,22 @@ export function listenForCallerCandidates(
     }
   );
 }
+
+export async function rejectCall (callId) {
+
+  const callRef = doc(db, "callls",callId);
+
+  await updateDoc(callRef, {
+    status: "rejected",
+  });
+}
+
+export async function endCall (callId) {
+
+  const callRef = doc(db, "callls",callId);
+
+  await updateDoc(callRef, {
+    status: "ended",
+  });
+}
+
