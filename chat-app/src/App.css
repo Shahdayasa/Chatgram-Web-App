@@ -2407,6 +2407,7 @@ flex-direction: column;
 .message-info p {
   height: 30px;
   border-bottom: 1px #c4c8cb solid;
+  
 }
 
 .delete{
@@ -2432,14 +2433,15 @@ right: 0;
 
 .message-context-menu {
   position: fixed;
-  transform: translate(-100%, 0);
-  background-color: #233138;
+  background-color: #fff;
   border-radius: 8px;
   padding: 6px 0;
   min-width: 180px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
+  z-index: 1000;
+  
 }
 
 .message-context-menu button {
@@ -2448,15 +2450,26 @@ right: 0;
   gap: 12px;
   background: none;
   border: none;
-  color: #e9edef;
+  color: #011627;
   padding: 10px 16px;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
+  border-radius:8px ;
+  -webkit-border-radius:8px ;
+  -moz-border-radius:8px ;
+  -ms-border-radius:8px ;
+  -o-border-radius:8px ;
+  margin: 3px;
+  transform: all 0.25s ease;
+  -webkit-transform: all 0.25s ease;
+  -moz-transform: all 0.25s ease;
+  -ms-transform: all 0.25s ease;
+  -o-transform: all 0.25s ease;
 }
 
 .message-context-menu button:hover {
-  background-color: #182229;
+  background-color: rgb(192, 188, 188);
 }
 
 .message-context-menu button.danger {

@@ -8,6 +8,7 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  deleteDoc,
 } from "firebase/firestore";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -60,6 +61,48 @@ const getLastSeen = (timestamp) => {
 
   return `Last seen ${lastSeenDate.toLocaleDateString()}`;
 };
+
+function ContextMenu({ x, y, onClose, children }) {
+  const menuRef = useRef(null);
+  const [position, setPosition] = useState({ top: y, left: x });
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+
+    const menuRect = menuRef.current.getBoundingClientRect();
+    const padding = 8;
+
+    let top = y;
+    let left = x;
+
+    if (top + menuRect.height + padding > window.innerHeight) {
+      top = y - menuRect.height;
+    }
+
+    if (left + menuRect.width + padding > window.innerWidth) {
+      left = x - menuRect.width;
+    }
+
+    top = Math.max(padding, Math.min(top, window.innerHeight - menuRect.height - padding));
+    left = Math.max(padding, Math.min(left, window.innerWidth - menuRect.width - padding));
+
+    setPosition({ top, left });
+  }, [x, y]);
+
+  return (
+    <>
+      <div className="message-context-overlay" onClick={onClose} />
+      <div
+        ref={menuRef}
+        className="message-context-menu"
+        style={{ top: position.top, left: position.left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
 
 export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const currentUser = auth.currentUser;
@@ -200,6 +243,19 @@ const [contextMenu, setContextMenu] = useState(null);
     }
   };
 
+
+   const handleDeleteMessage = async () => {
+  if (!selectedMessage) return;
+
+  try {
+    await deleteDoc(doc(db, "messages", selectedMessage.id));
+  } catch (error) {
+    console.error("Error deleting message:", error);
+  } finally {
+    setSelectedMessage(null);
+    setContextMenu(null);
+  }
+};
   const handleSend = (text) => {
     if (isBlocked) {
       return;
@@ -405,8 +461,12 @@ const [contextMenu, setContextMenu] = useState(null);
             </div>
           )}
 
-      <div
-  onClick={() => setSelectedMessage(message)}
+<div
+  onContextMenu={(e) => {
+    e.preventDefault();
+    setSelectedMessage(message);
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }}
   className={
     (isMyMessage
       ? "message my-message"
@@ -445,51 +505,32 @@ const [contextMenu, setContextMenu] = useState(null);
   </div>
 </div>
 
-
-{selectedMessage && (
-  <div 
-  className="message-info-overlay"
-  onClick={() =>setSelectedMessage(null)}
+{selectedMessage && contextMenu && (
+  <ContextMenu
+    x={contextMenu.x}
+    y={contextMenu.y}
+    onClose={() => {
+      setSelectedMessage(null);
+      setContextMenu(null);
+    }}
   >
-    <div
-    className="message-info"
-    onClick={(e) => e.stopPropagation()}
-    >
-
-    <p className="select-msg">
-      <span>Reply</span>
-         <span className="icon-info"><FontAwesomeIcon icon={faReply} />
-        </span>
-    </p>
-
-    <p className="select-msg">
-   <span>Pin</span>
-    <span className="icon-info"><FontAwesomeIcon icon={faThumbtack} />
-        </span>
-    </p>
-
-    <p className="select-msg">
-      <span>Star</span>
-        <span className="icon-info"><FontAwesomeIcon icon={faStar} />
-        </span>
-    </p>
-
-      <p className="select-msg">
-   <span>MessageInfo</span> 
-<span className="icon-info"><FontAwesomeIcon icon={faCircleInfo} />
-</span>
-    </p>
-
-    <p className="delete">
-    <span>Delete</span>
-    <span className="icon-info"><FontAwesomeIcon icon={faTrash} />
-</span>
-    </p>
-
-      </div>
-    </div>
+    <button type="button">
+      <FontAwesomeIcon icon={faReply} /> Reply
+    </button>
+    <button type="button">
+      <FontAwesomeIcon icon={faThumbtack} /> Pin
+    </button>
+    <button type="button">
+      <FontAwesomeIcon icon={faStar} /> Star
+    </button>
+    <button type="button">
+      <FontAwesomeIcon icon={faCircleInfo} /> Message Info
+    </button>
+<button type="button" className="danger" onClick={handleDeleteMessage}>
+  <FontAwesomeIcon icon={faTrash} /> Delete
+</button>
+  </ContextMenu>
 )}
-
       {isBlocked ? (
         <div className="blocked-message">
           <button
