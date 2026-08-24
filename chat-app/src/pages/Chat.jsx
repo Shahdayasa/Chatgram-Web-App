@@ -324,14 +324,14 @@ export function Chat() {
         }
       });
 
-      listenForReceiverCandidates(newCallId, pc);
+listenForReceiverCandidates(newCallId, pc);
 
-      listenForCallStatus(newCallId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupCall();
-          setIncomingCall(null);
-        }
-      });
+listenForCallStatus(newCallId, (status) => {
+  if (status === "ended" || status === "rejected") {
+    cleanupCall();
+    setIncomingCall(null);
+  }
+});
     } catch (error) {
       console.error("Error starting call:", error);
 
@@ -382,44 +382,43 @@ export function Chat() {
       console.error("Error rejecting call:", error);
     }
   };
+const handleEndCall = async () => {
+  const id = callIdRef.current;
 
-  const handleEndCall = async () => {
-    const id = callIdRef.current;
-
-    try {
-      if (id) {
-        await endCall(id);
-      }
-    } catch (error) {
-      console.error("Error ending call:", error);
+  try {
+    if (id) {
+      await endCall(id);
     }
+  } catch (error) {
+    console.error("Error ending call:", error);
+  }
 
-    cleanupCall();
-    setIncomingCall(null);
-  };
+  cleanupCall();
+  setIncomingCall(null);
+};
 
-  const cleanupCall = () => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
+const cleanupCall = () => {
+  if (peerConnectionRef.current) {
+    peerConnectionRef.current.close();
+    peerConnectionRef.current = null;
+  }
 
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-      localStreamRef.current = null;
-    }
+  if (localStreamRef.current) {
+    localStreamRef.current.getTracks().forEach((track) => {
+      track.stop();
+    });
+    localStreamRef.current = null;
+  }
 
-    callIdRef.current = null;
+  callIdRef.current = null;
 
-    setPeerConnection(null);
-    setLocalStream(null);
-    setRemoteStream(null);
-    setCallId(null);
-    setCallState(null);
-    setIsSpeaking(false);
-  };
+  setPeerConnection(null);
+  setLocalStream(null);
+  setRemoteStream(null);
+  setCallId(null);
+  setCallState(null);
+  setIsSpeaking(false);
+};
   return (
     <div className="container">
       <div className="list">

@@ -144,6 +144,71 @@ export function listenForReceiverCandidates(
   );
 }
 
+export async function acceptCall(
+  callId,
+  stream,
+  onRemoteStream
+) {
+  const callRef = doc(db, "calls", callId);
+
+  const callSnapshot = await getDoc(callRef);
+
+  if (!callSnapshot.exists()) {
+    throw new Error("Call does not exist");
+  }
+
+  const callData = callSnapshot.data();
+
+  if (!callData.offer) {
+    throw new Error("Call offer does not exist");
+  }
+
+  const peerConnection = createPeerConnection();
+
+  stream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, stream);
+  });
+
+  peerConnection.ontrack = (event) => {
+    if (event.streams && event.streams[0]) {
+      onRemoteStream(event.streams[0]);
+    }
+  };
+
+  const receiverCandidatesRef = collection(
+    callRef,
+    "receiverCandidates"
+  );
+
+  peerConnection.onicecandidate = async (event) => {
+    if (event.candidate) {
+      await addDoc(
+        receiverCandidatesRef,
+        event.candidate.toJSON()
+      );
+    }
+  };
+
+  const offer = new RTCSessionDescription(
+    callData.offer
+  );
+
+  await peerConnection.setRemoteDescription(offer);
+
+  const answer = await peerConnection.createAnswer();
+
+  await peerConnection.setLocalDescription(answer);
+
+  await updateDoc(callRef, {
+    answer: {
+      type: answer.type,
+      sdp: answer.sdp,
+    },
+    status: "connected",
+  });
+
+  return peerConnection;
+}
 
 export function listenForCallStatus(callId, onStatusChange) {
   const callRef = doc(db, "calls", callId);
