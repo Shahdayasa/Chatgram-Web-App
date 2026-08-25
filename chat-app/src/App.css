@@ -994,7 +994,73 @@ textarea {
   align-items: flex-end;
 }
 
+.reply-preview {
+  width: min(694px, calc(100% - 48px));
+  margin: 0 auto -4px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border-left: 3px solid #4caf50;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 6px rgba(1, 22, 39, 0.05);
+}
 
+.reply-preview-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.reply-preview-label {
+  display: block;
+  color: #4caf50;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reply-preview-content p {
+  margin: 2px 0 0;
+  color: #707991;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-preview-close {
+  background: transparent;
+  border: none;
+  color: #707991;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.reply-quote {
+  border-left: 3px solid #4caf50;
+  padding: 4px 8px;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+}
+
+.reply-quote span {
+  display: block;
+  color: #4caf50;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reply-quote p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #011627;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .message {
   width: fit-content;

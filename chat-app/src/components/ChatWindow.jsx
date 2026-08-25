@@ -129,6 +129,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const messagesEndRef = useRef(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -259,12 +260,12 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
       setContextMenu(null);
     }
   };
-  const handleSend = (text) => {
+  const handleSend = (text, replyTo) => {
     if (isBlocked) {
       return;
     }
 
-    onSend(text);
+    onSend(text, replyTo);
   };
 
   const renderAvatar = (image, name, alt) => {
@@ -461,33 +462,47 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
                   </div>
                 )}
 
-<div
-  onContextMenu={(e) => {
-    e.preventDefault();
-    setSelectedMessage(message);
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  }}
-  className={
-    (isMyMessage ? "message my-message" : "message other-message") +
-    (isCurrentMatch ? " message-highlighted" : "")
-  }
-  style={{
-    transform:
-      selectedMessage?.id === message.id ? "scale(1.06)" : "scale(1)",
-    transition: "transform 0.15s ease",
-  }}
->
-  <p>{message.text}</p>
+                <div
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setSelectedMessage(message);
+                    setContextMenu({ x: e.clientX, y: e.clientY });
+                  }}
+                  className={
+                    (isMyMessage
+                      ? "message my-message"
+                      : "message other-message") +
+                    (isCurrentMatch ? " message-highlighted" : "")
+                  }
+                  style={{
+                    transform:
+                      selectedMessage?.id === message.id
+                        ? "scale(1.06)"
+                        : "scale(1)",
+                    transition: "transform 0.15s ease",
+                  }}
+                >
+                  {message.replyTo && (
+                    <div className="reply-quote">
+                      <span>
+                        {message.replyTo.senderId === currentUser?.uid
+                          ? "You"
+                          : selectedUser.name}
+                      </span>
+                      <p>{message.replyTo.text}</p>
+                    </div>
+                  )}
+                  <p>{message.text}</p>
 
-  <span>
-    {message.createdAt?.toDate
-      ? message.createdAt.toDate().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : ""}
-  </span>
-</div>
+                  <span>
+                    {message.createdAt?.toDate
+                      ? message.createdAt.toDate().toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </span>
+                </div>
 
                 {isMyMessage && (
                   <div className="message-avatar">
@@ -517,7 +532,14 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
             setContextMenu(null);
           }}
         >
-          <button type="button">
+          <button
+            type="button"
+            onClick={() => {
+              setReplyingTo(selectedMessage);
+              setSelectedMessage(null);
+              setContextMenu(null);
+            }}
+          >
             <FontAwesomeIcon icon={faReply} /> Reply
           </button>
           <button type="button">
@@ -550,7 +572,34 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
           </button>
         </div>
       ) : (
-        <MessageInput onSend={handleSend} />
+        <>
+          {replyingTo && (
+            <div className="reply-preview">
+              <div className="reply-preview-content">
+                <span className="reply-preview-label">
+                  Replying to{" "}
+                  {replyingTo.senderId === currentUser?.uid
+                    ? "yourself"
+                    : selectedUser.name}
+                </span>
+                <p>{replyingTo.text}</p>
+              </div>
+              <button
+                type="button"
+                className="reply-preview-close"
+                onClick={() => setReplyingTo(null)}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          <MessageInput
+            onSend={(text) => {
+              handleSend(text, replyingTo);
+              setReplyingTo(null);
+            }}
+          />
+        </>
       )}
     </div>
   );

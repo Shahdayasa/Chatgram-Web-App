@@ -177,30 +177,32 @@ export function Chat() {
     return () => unsubscribe();
   }, [selectedUser]);
 
-  const handleSend = async (text) => {
-    if (!selectedUser || !auth.currentUser || !text.trim()) {
-      return;
-    }
+const handleSend = async (text, replyTo) => {
+  if (!selectedUser || !auth.currentUser || !text.trim()) {
+    return;
+  }
 
-    try {
-      await addDoc(collection(db, "messages"), {
-        text: text.trim(),
+  try {
+    await addDoc(collection(db, "messages"), {
+      text: text.trim(),
+      senderId: auth.currentUser.uid,
+      receiverId: selectedUser.uid,
+      participants: [auth.currentUser.uid, selectedUser.uid],
+      createdAt: serverTimestamp(),
+      replyTo: replyTo
+        ? {
+            id: replyTo.id,
+            text: replyTo.text,
+            senderId: replyTo.senderId,
+          }
+        : null,
+    });
 
-        senderId: auth.currentUser.uid,
-
-        receiverId: selectedUser.uid,
-
-        participants: [auth.currentUser.uid, selectedUser.uid],
-
-        createdAt: serverTimestamp(),
-      });
-
-      console.log("Message sent successfully");
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
-  };
-
+    console.log("Message sent successfully");
+  } catch (error) {
+    console.error("Error sending message:", error);
+  }
+};
   useEffect(() => {
     const currentUser = auth.currentUser;
 
