@@ -260,6 +260,22 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
       setContextMenu(null);
     }
   };
+
+   const handleTogglePin = async () => {
+  if (!selectedMessage) return;
+
+  try {
+    await updateDoc(doc(db, "messages", selectedMessage.id), {
+      pinned: !selectedMessage.pinned,
+    });
+  } catch (error) {
+    console.error("Error toggling pin:", error);
+  } finally {
+    setSelectedMessage(null);
+    setContextMenu(null);
+  }
+};
+
   const handleSend = (text, replyTo) => {
     if (isBlocked) {
       return;
@@ -432,6 +448,29 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
         </div>
       )}
 
+
+      {messages.some((m) => m.pinned) && (
+  <div className="pinned-bar">
+    <FontAwesomeIcon icon={faThumbtack} />
+    <div className="pinned-bar-list">
+      {messages
+        .filter((m) => m.pinned)
+        .map((m) => (
+          <div
+            key={m.id}
+            className="pinned-bar-item"
+            onClick={() => {
+              const el = messageRefs.current[m.id];
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          >
+            {m.text}
+          </div>
+        ))}
+    </div>
+  </div>
+)}
+
       <div className="messages" ref={messagesContainerRef}>
         <div className="messages-content">
           {messages.map((message) => {
@@ -542,8 +581,9 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
           >
             <FontAwesomeIcon icon={faReply} /> Reply
           </button>
-          <button type="button">
-            <FontAwesomeIcon icon={faThumbtack} /> Pin
+          <button type="button" onClick={handleTogglePin}>
+            <FontAwesomeIcon icon={faThumbtack} />
+            {selectedMessage?.pinned ? "Unpin" : "Pin"}
           </button>
           <button type="button">
             <FontAwesomeIcon icon={faStar} /> Star
