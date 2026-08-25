@@ -261,20 +261,39 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
     }
   };
 
-   const handleTogglePin = async () => {
-  if (!selectedMessage) return;
+  const handleTogglePin = async () => {
+    if (!selectedMessage) return;
 
-  try {
-    await updateDoc(doc(db, "messages", selectedMessage.id), {
-      pinned: !selectedMessage.pinned,
-    });
-  } catch (error) {
-    console.error("Error toggling pin:", error);
-  } finally {
-    setSelectedMessage(null);
-    setContextMenu(null);
-  }
-};
+    try {
+      await updateDoc(doc(db, "messages", selectedMessage.id), {
+        pinned: !selectedMessage.pinned,
+      });
+    } catch (error) {
+      console.error("Error toggling pin:", error);
+    } finally {
+      setSelectedMessage(null);
+      setContextMenu(null);
+    }
+  };
+
+  const handleToggleStar = async () => {
+    if (!selectedMessage || !currentUser) return;
+
+    const isStarred = selectedMessage.starredBy?.includes(currentUser.uid);
+
+    try {
+      await updateDoc(doc(db, "messages", selectedMessage.id), {
+        starredBy: isStarred
+          ? arrayRemove(currentUser.uid)
+          : arrayUnion(currentUser.uid),
+      });
+    } catch (error) {
+      console.error("Error toggling star:", error);
+    } finally {
+      setSelectedMessage(null);
+      setContextMenu(null);
+    }
+  };
 
   const handleSend = (text, replyTo) => {
     if (isBlocked) {
@@ -448,28 +467,27 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
         </div>
       )}
 
-
       {messages.some((m) => m.pinned) && (
-  <div className="pinned-bar">
-    <FontAwesomeIcon icon={faThumbtack} />
-    <div className="pinned-bar-list">
-      {messages
-        .filter((m) => m.pinned)
-        .map((m) => (
-          <div
-            key={m.id}
-            className="pinned-bar-item"
-            onClick={() => {
-              const el = messageRefs.current[m.id];
-              el?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }}
-          >
-            {m.text}
+        <div className="pinned-bar">
+          <FontAwesomeIcon icon={faThumbtack} />
+          <div className="pinned-bar-list">
+            {messages
+              .filter((m) => m.pinned)
+              .map((m) => (
+                <div
+                  key={m.id}
+                  className="pinned-bar-item"
+                  onClick={() => {
+                    const el = messageRefs.current[m.id];
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  {m.text}
+                </div>
+              ))}
           </div>
-        ))}
-    </div>
-  </div>
-)}
+        </div>
+      )}
 
       <div className="messages" ref={messagesContainerRef}>
         <div className="messages-content">
@@ -532,7 +550,12 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
                     </div>
                   )}
                   <p>{message.text}</p>
-
+                  {message.starredBy?.includes(currentUser?.uid) && (
+                    <FontAwesomeIcon
+                      icon={faStar}
+                      className="message-star-icon"
+                    />
+                  )}
                   <span>
                     {message.createdAt?.toDate
                       ? message.createdAt.toDate().toLocaleTimeString([], {
@@ -585,8 +608,11 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
             <FontAwesomeIcon icon={faThumbtack} />
             {selectedMessage?.pinned ? "Unpin" : "Pin"}
           </button>
-          <button type="button">
-            <FontAwesomeIcon icon={faStar} /> Star
+          <button type="button" onClick={handleToggleStar}>
+            <FontAwesomeIcon icon={faStar} />
+            {selectedMessage?.starredBy?.includes(currentUser?.uid)
+              ? "Unstar"
+              : "Star"}
           </button>
           <button type="button">
             <FontAwesomeIcon icon={faCircleInfo} /> Message Info
