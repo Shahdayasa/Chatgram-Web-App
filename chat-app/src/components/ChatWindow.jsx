@@ -30,6 +30,7 @@ import {
   faPhone,
   faVideo,
   faImages,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -115,8 +116,26 @@ function ContextMenu({ x, y, onClose, children }) {
   );
 }
 
-function ContactInfoPanel({ user, messages, onClose }) {
+function ContactInfoPanel({
+  user,
+  displayName,
+  messages,
+  onClose,
+  onRename,
+  onCall,
+  onSearch,
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(displayName);
+
   const mediaMessages = messages.filter((m) => m.imageUrl);
+
+  const handleSaveName = () => {
+    if (nameInput.trim()) {
+      onRename(nameInput.trim());
+    }
+    setIsEditing(false);
+  };
 
   return (
     <div className="contact-info-overlay">
@@ -125,7 +144,14 @@ function ContactInfoPanel({ user, messages, onClose }) {
           <FontAwesomeIcon icon={faXmark} />
         </button>
         <h3>Contact info</h3>
-        <button type="button" className="contact-info-edit">
+        <button
+          type="button"
+          className="contact-info-edit"
+          onClick={() => {
+            setNameInput(displayName);
+            setIsEditing((prev) => !prev);
+          }}
+        >
           <FontAwesomeIcon icon={faPen} />
         </button>
       </div>
@@ -135,22 +161,40 @@ function ContactInfoPanel({ user, messages, onClose }) {
           {user.avatar ? (
             <img
               src={user.avatar}
-              alt={user.name}
+              alt={displayName}
               className="contact-info-avatar"
             />
           ) : (
             <div className="contact-info-avatar-placeholder">
-              {user.name?.charAt(0).toUpperCase()}
+              {displayName?.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
 
-        <h2 className="contact-info-name">{user.name}</h2>
+        {isEditing ? (
+          <div className="contact-info-name-edit">
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              autoFocus
+            />
+            <button type="button" onClick={handleSaveName}>
+              <FontAwesomeIcon icon={faCheck} />
+            </button>
+          </div>
+        ) : (
+          <h2 className="contact-info-name">{displayName}</h2>
+        )}
 
         {user.phone && <p className="contact-info-phone">{user.phone}</p>}
 
         <div className="contact-info-actions">
-          <button type="button" className="contact-info-action">
+          <button
+            type="button"
+            className="contact-info-action"
+            onClick={onCall}
+          >
             <FontAwesomeIcon icon={faPhone} />
             <span>Voice</span>
           </button>
@@ -158,7 +202,11 @@ function ContactInfoPanel({ user, messages, onClose }) {
             <FontAwesomeIcon icon={faVideo} />
             <span>Video</span>
           </button>
-          <button type="button" className="contact-info-action">
+          <button
+            type="button"
+            className="contact-info-action"
+            onClick={onSearch}
+          >
             <FontAwesomeIcon icon={faMagnifyingGlass} />
             <span>Search</span>
           </button>
@@ -201,7 +249,6 @@ function ContactInfoPanel({ user, messages, onClose }) {
     </div>
   );
 }
-
 export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const currentUser = auth.currentUser;
 
@@ -223,6 +270,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const [contextMenu, setContextMenu] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [contactNames, setContactNames] = useState({});
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -230,20 +278,22 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
     const userRef = doc(db, "users", currentUser.uid);
 
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
+   const unsubscribe = onSnapshot(userRef, (snapshot) => {
+  if (snapshot.exists()) {
+    const data = snapshot.data();
 
-        setAvatar(data.avatar || "");
-        setCurrentUserName(data.name || currentUser.displayName || "");
+    setAvatar(data.avatar || "");
+    setCurrentUserName(data.name || currentUser.displayName || "");
 
-        setBlockedUsers(data.blockedUsers || []);
-      } else {
-        setAvatar("");
-        setCurrentUserName(currentUser.displayName || "");
-        setBlockedUsers([]);
-      }
-    });
+    setBlockedUsers(data.blockedUsers || []);
+    setContactNames(data.contactNames || {});
+  } else {
+    setAvatar("");
+    setCurrentUserName(currentUser.displayName || "");
+    setBlockedUsers([]);
+    setContactNames({});
+  }
+});
 
     return () => unsubscribe();
   }, []);
@@ -387,7 +437,21 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
       setContextMenu(null);
     }
   };
+const displayName = selectedUser
+  ? contactNames[selectedUser.uid] || selectedUser.name
+  : "";
 
+const handleRenameContact = async (newName) => {
+  if (!currentUser || !selectedUser || !newName.trim()) return;
+
+  try {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      [`contactNames.${selectedUser.uid}`]: newName.trim(),
+    });
+  } catch (error) {
+    console.error("Error renaming contact:", error);
+  }
+};
   const handleSend = (text, replyTo) => {
     if (isBlocked) {
       return;
@@ -482,18 +546,19 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
               onClick={() => setShowContactInfo(true)}
               style={{ cursor: "pointer" }}
             >
-              {selectedUser.avatar ? (
-                <img
-                  src={selectedUser.avatar}
-                  alt={`${selectedUser.name}'s avatar`}
-                  className="profile-avatar"
-                />
-              ) : (
-                <span>{selectedUser.name?.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <div className="name-status">
-              <h3>{selectedUser.name}</h3>
+       {selectedUser.avatar ? (
+  <img
+    src={selectedUser.avatar}
+    alt={`${displayName}'s avatar`}
+    className="profile-avatar"
+  />
+) : (
+  <span>{displayName?.charAt(0).toUpperCase()}</span>
+)}
+</div>
+
+<div className="name-status">
+  <h3>{displayName}</h3>
 
               <p>
                 {isBlocked
@@ -723,11 +788,21 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
           </button>
         </ContextMenu>
       )}
-      {showContactInfo && (
+{showContactInfo && (
   <ContactInfoPanel
     user={selectedUser}
+    displayName={displayName}
     messages={messages}
     onClose={() => setShowContactInfo(false)}
+    onRename={handleRenameContact}
+    onCall={() => {
+      setShowContactInfo(false);
+      onCall();
+    }}
+    onSearch={() => {
+      setShowContactInfo(false);
+      setShowSearch(true);
+    }}
   />
 )}
       {isBlocked ? (

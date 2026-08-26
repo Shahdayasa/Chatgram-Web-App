@@ -7,6 +7,7 @@ import {
   setDoc,
   collection,
   getDocs,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { auth, db } from "../firebase/firebase";
@@ -19,6 +20,8 @@ import {
   faPen,
   faCheck,
   faUserGroup,
+  faArrowLeft,
+  faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 
 export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
@@ -37,7 +40,7 @@ export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
   const [newUserName, setNewUserName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [description, setDescription] = useState("");
-const [editingDescription, setEditingDescription] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const [newDescription, setNewDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
   //const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -45,6 +48,10 @@ const [editingDescription, setEditingDescription] = useState(false);
   const [newPhone, setNewPhone] = useState("");
   const [editingPhone, setEditingPhone] = useState(false);
   const [savingPhone, setSavingPhone] = useState(false);
+  const [contactsMode, setContactsMode] = useState("list");
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [groupName, setGroupName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -238,13 +245,10 @@ const [editingDescription, setEditingDescription] = useState(false);
 
     const trimmedDescription = newDescription.trim();
 
-  if (trimmedDescription.length > 100) {
-  showToast(
-    "Description must be less than 100 characters.",
-    "error"
-  );
-  return;
-}
+    if (trimmedDescription.length > 100) {
+      showToast("Description must be less than 100 characters.", "error");
+      return;
+    }
 
     try {
       setSavingDescription(true);
@@ -349,6 +353,67 @@ const [editingDescription, setEditingDescription] = useState(false);
       setLoadingContacts(false);
     }
   };
+
+  const closeContactsModal = () => {
+  setShowContacts(false);
+  setContactSearch("");
+  setContactsMode("list");
+  setSelectedMembers([]);
+  setGroupName("");
+};
+
+const toggleMember = (contact) => {
+  setSelectedMembers((prev) =>
+    prev.some((m) => m.id === contact.id)
+      ? prev.filter((m) => m.id !== contact.id)
+      : [...prev, contact],
+  );
+};
+
+const handleCreateGroup = async () => {
+  const currentUser = auth.currentUser;
+  const trimmedName = groupName.trim();
+
+  if (!currentUser) {
+    showToast("You must be logged in.", "error");
+    return;
+  }
+
+  if (!trimmedName) {
+    showToast("Group name cannot be empty.", "error");
+    return;
+  }
+
+  if (selectedMembers.length === 0) {
+    showToast("Select at least one member.", "error");
+    return;
+  }
+
+  try {
+    setCreatingGroup(true);
+
+    const groupRef = doc(collection(db, "groups"));
+    const memberIds = [
+      currentUser.uid,
+      ...selectedMembers.map((m) => m.uid || m.id),
+    ];
+
+    await setDoc(groupRef, {
+      name: trimmedName,
+      members: memberIds,
+      createdBy: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    showToast("Group created successfully!", "success");
+    closeContactsModal();
+  } catch (error) {
+    console.error("Error creating group:", error);
+    showToast("Failed to create group.", "error");
+  } finally {
+    setCreatingGroup(false);
+  }
+};
   const filteredContacts = contacts.filter((contact) => {
     const search = contactSearch.toLowerCase().trim();
 
@@ -595,7 +660,9 @@ const [editingDescription, setEditingDescription] = useState(false);
                     <p>Name</p>
                   </label>
 
-                  <div className={`name-field ${editingName ? "is-editing" : ""}`}>
+                  <div
+                    className={`name-field ${editingName ? "is-editing" : ""}`}
+                  >
                     <input
                       id="name"
                       type="text"
@@ -627,8 +694,10 @@ const [editingDescription, setEditingDescription] = useState(false);
                     <p>Phone Number</p>
                   </label>
 
-                      <div className={`phone-field ${editingPhone ? "is-editing" : ""}`}>
-                      <input
+                  <div
+                    className={`phone-field ${editingPhone ? "is-editing" : ""}`}
+                  >
+                    <input
                       id="phone"
                       type="tel"
                       value={editingPhone ? newPhone : phone}
@@ -662,8 +731,10 @@ const [editingDescription, setEditingDescription] = useState(false);
                     <p>Description</p>
                   </label>
 
-                      <div className={`description-field ${editingDescription ? "is-editing" : ""}`}>
-                      <input
+                  <div
+                    className={`description-field ${editingDescription ? "is-editing" : ""}`}
+                  >
+                    <input
                       id="description"
                       type="text"
                       value={editingDescription ? newDescription : description}
@@ -761,10 +832,9 @@ const [editingDescription, setEditingDescription] = useState(false);
             </div>
 
             <div className="new-group">
-
-                <FontAwesomeIcon icon={faUserGroup} />
+              <FontAwesomeIcon className="group-icon" icon={faUserGroup} />
               <button>
-                New group
+                <span>New group</span>
               </button>
             </div>
 
