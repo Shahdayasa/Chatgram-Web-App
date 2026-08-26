@@ -329,19 +329,45 @@ const handleSend = async (message, replyTo) => {
     return;
   }
 
-  const isImage = typeof message === "object";
+  const isAttachment =
+    typeof message === "object" && message !== null;
 
-  const text = isImage ? "" : message;
-  const imageUrl = isImage ? message.imageUrl : null;
+  const text = isAttachment
+    ? message.text || ""
+    : message;
 
-  if (!text?.trim() && !imageUrl) {
+  const imageUrl = isAttachment
+    ? message.imageUrl || null
+    : null;
+
+  const fileUrl = isAttachment
+    ? message.fileUrl || null
+    : null;
+
+  const fileName = isAttachment
+    ? message.fileName || null
+    : null;
+
+  const fileType = isAttachment
+    ? message.fileType || null
+    : null;
+
+  const fileSize = isAttachment
+    ? message.fileSize || null
+    : null;
+
+  if (
+    !text?.trim() &&
+    !imageUrl &&
+    !fileUrl
+  ) {
     return;
   }
 
   const replyToData = replyTo
     ? {
         id: replyTo.id,
-        text: replyTo.text,
+        text: replyTo.text || "",
         senderId: replyTo.senderId,
       }
     : null;
@@ -350,31 +376,52 @@ const handleSend = async (message, replyTo) => {
     if (selectedUser.isGroup) {
       await addDoc(collection(db, "messages"), {
         text: text?.trim() || "",
-        imageUrl: imageUrl || null,
+
+        imageUrl,
+        fileUrl,
+        fileName,
+        fileType,
+        fileSize,
+
         senderId: auth.currentUser.uid,
         groupId: selectedUser.id,
         isGroup: true,
+
         createdAt: serverTimestamp(),
+
         replyTo: replyToData,
       });
     } else {
       await addDoc(collection(db, "messages"), {
         text: text?.trim() || "",
-        imageUrl: imageUrl || null,
+
+        imageUrl,
+        fileUrl,
+        fileName,
+        fileType,
+        fileSize,
+
         senderId: auth.currentUser.uid,
         receiverId: selectedUser.uid,
+
         participants: [
           auth.currentUser.uid,
           selectedUser.uid,
         ],
+
         createdAt: serverTimestamp(),
+
         delivered: false,
         read: false,
+
         replyTo: replyToData,
       });
     }
   } catch (error) {
-    console.error("Error sending message:", error);
+    console.error(
+      "Error sending message:",
+      error,
+    );
   }
 };
   useEffect(() => {
