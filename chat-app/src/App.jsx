@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -11,7 +13,6 @@ import "./App.css";
 
 function App() {
   const [user, setUser] = useState(null);
-
   const [isRegister, setIsRegister] = useState(false);
   const [toast, setToast] = useState({
     show: false,
@@ -20,12 +21,9 @@ function App() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (currentUser) => {
-        setUser(currentUser);
-      }
-    );
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
 
     return () => unsubscribe();
   }, []);
@@ -46,9 +44,9 @@ function App() {
     }, 4000);
   };
 
-
   return (
     <>
+
       {toast.show && (
         <div className={`toast ${toast.type}`}>
           <div className="toast-icon">
@@ -56,15 +54,9 @@ function App() {
           </div>
 
           <div className="toast-content">
-            <strong>
-              {toast.type === "success"
-                ? "Success"
-                : "Error"}
-            </strong>
-
+            <strong>{toast.type === "success" ? "Success" : "Error"}</strong>
             <p>{toast.message}</p>
           </div>
-
         </div>
       )}
 

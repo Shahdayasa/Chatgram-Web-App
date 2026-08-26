@@ -166,7 +166,7 @@ function ContactInfoPanel({
             />
           ) : (
             <div className="contact-info-avatar-placeholder">
-              {displayName?.charAt(0).toUpperCase()}
+            {displayName?.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
@@ -212,10 +212,10 @@ function ContactInfoPanel({
           </button>
         </div>
 
-        {user.about && (
+        {user.description && (
           <div className="contact-info-section">
             <span className="contact-info-section-label">About</span>
-            <p className="contact-info-about">{user.about}</p>
+            <p className="contact-info-about">{user.description}</p>
           </div>
         )}
 
@@ -807,6 +807,13 @@ const handleRenameContact = async (newName) => {
 )}
       {isBlocked ? (
         <div className="blocked-message">
+
+                 <button
+            type="button"
+            className="delete-chat"
+          >
+           Delete chat
+          </button>
           <button
             type="button"
             className="unblock-button"
@@ -815,6 +822,8 @@ const handleRenameContact = async (newName) => {
           >
             {loadingBlock ? "Please wait..." : "Unblock"}
           </button>
+
+         
         </div>
       ) : (
         <>

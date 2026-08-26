@@ -35,6 +35,8 @@ export function Chat() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [previews, setPreviews] = useState({});
+  const [groups, setGroups] = useState([]);
+const [groupPreviews, setGroupPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const [callId, setCallId] = useState(null);
@@ -155,19 +157,20 @@ export function Chat() {
         setPreviews(latestMessages);
 
         // Messages for selected user
-        if (selectedUser) {
-          const selectedMessages = allMessages.filter(
-            (message) =>
-              (message.senderId === currentUserId &&
-                message.receiverId === selectedUser.uid) ||
-              (message.senderId === selectedUser.uid &&
-                message.receiverId === currentUserId),
-          );
+// Messages for selected user
+if (selectedUser && !selectedUser.isGroup) {
+  const selectedMessages = allMessages.filter(
+    (message) =>
+      (message.senderId === currentUserId &&
+        message.receiverId === selectedUser.uid) ||
+      (message.senderId === selectedUser.uid &&
+        message.receiverId === currentUserId),
+  );
 
-          setMessages(selectedMessages);
-        } else {
-          setMessages([]);
-        }
+  setMessages(selectedMessages);
+} else if (!selectedUser) {
+  setMessages([]);
+}
       },
       (error) => {
         console.error("Error getting messages:", error);
@@ -176,27 +179,125 @@ export function Chat() {
 
     return () => unsubscribe();
   }, [selectedUser]);
+  useEffect(() => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+
+  const groupsQuery = query(
+    collection(db, "groups"),
+    where("members", "array-contains", currentUser.uid),
+  );
+
+  const unsubscribe = onSnapshot(
+    groupsQuery,
+    (snapshot) => {
+      const groupsData = snapshot.docs.map((groupDoc) => ({
+        id: groupDoc.id,
+        uid: groupDoc.id,
+        isGroup: true,
+        ...groupDoc.data(),
+      }));
+
+      setGroups(groupsData);
+    },
+    (error) => {
+      console.error("Error getting groups:", error);
+    },
+  );
+
+  return () => unsubscribe();
+}, []);
+
+useEffect(() => {
+  if (groups.length === 0) {
+    setGroupPreviews({});
+    return;
+  }
+
+  const groupIds = groups.map((g) => g.id).slice(0, 10);
+
+  const previewQuery = query(
+    collection(db, "messages"),
+    where("groupId", "in", groupIds),
+    orderBy("createdAt", "asc"),
+  );
+
+  const unsubscribe = onSnapshot(
+    previewQuery,
+    (snapshot) => {
+      const latest = {};
+
+      snapshot.docs.forEach((messageDoc) => {
+        const data = messageDoc.data();
+        latest[data.groupId] = { id: messageDoc.id, ...data };
+      });
+
+      setGroupPreviews(latest);
+    },
+    (error) => {
+      console.error("Error getting group previews:", error);
+    },
+  );
+
+  return () => unsubscribe();
+}, [groups]);
+
+useEffect(() => {
+  if (!selectedUser?.isGroup) return;
+
+  const groupMessagesQuery = query(
+    collection(db, "messages"),
+    where("groupId", "==", selectedUser.id),
+    orderBy("createdAt", "asc"),
+  );
+
+  const unsubscribe = onSnapshot(
+    groupMessagesQuery,
+    (snapshot) => {
+      const groupMessages = snapshot.docs.map((messageDoc) => ({
+        id: messageDoc.id,
+        ...messageDoc.data(),
+      }));
+
+      setMessages(groupMessages);
+    },
+    (error) => {
+      console.error("Error getting group messages:", error);
+    },
+  );
+
+  return () => unsubscribe();
+}, [selectedUser]);
 
 const handleSend = async (text, replyTo) => {
   if (!selectedUser || !auth.currentUser || !text.trim()) {
     return;
   }
 
+  const replyToData = replyTo
+    ? { id: replyTo.id, text: replyTo.text, senderId: replyTo.senderId }
+    : null;
+
   try {
-    await addDoc(collection(db, "messages"), {
-      text: text.trim(),
-      senderId: auth.currentUser.uid,
-      receiverId: selectedUser.uid,
-      participants: [auth.currentUser.uid, selectedUser.uid],
-      createdAt: serverTimestamp(),
-      replyTo: replyTo
-        ? {
-            id: replyTo.id,
-            text: replyTo.text,
-            senderId: replyTo.senderId,
-          }
-        : null,
-    });
+    if (selectedUser.isGroup) {
+      await addDoc(collection(db, "messages"), {
+        text: text.trim(),
+        senderId: auth.currentUser.uid,
+        groupId: selectedUser.id,
+        isGroup: true,
+        createdAt: serverTimestamp(),
+        replyTo: replyToData,
+      });
+    } else {
+      await addDoc(collection(db, "messages"), {
+        text: text.trim(),
+        senderId: auth.currentUser.uid,
+        receiverId: selectedUser.uid,
+        participants: [auth.currentUser.uid, selectedUser.uid],
+        createdAt: serverTimestamp(),
+        replyTo: replyToData,
+      });
+    }
 
     console.log("Message sent successfully");
   } catch (error) {
@@ -430,21 +531,26 @@ const cleanupCall = () => {
           onSelectUser={setSelectedUser}
         />
 
-        <Chatlist
-          users={users}
-          onSelectUser={setSelectedUser}
-          previews={previews}
-          searchTerm={searchTerm}
-        />
+     <Chatlist
+  users={users}
+  groups={groups}
+  onSelectUser={setSelectedUser}
+  previews={previews}
+  groupPreviews={groupPreviews}
+  searchTerm={searchTerm}
+/>
       </div>
 
       <div className="chat-area">
-        <ChatWindow
-          selectedUser={selectedUser}
-          messages={messages}
-          onSend={handleSend}
-          onCall={handleCall}
-        />
+        <div className="chat-area">
+  <ChatWindow
+    selectedUser={selectedUser}
+    messages={messages}
+    onSend={handleSend}
+    onCall={handleCall}
+    users={users} 
+  />
+</div>
       </div>
       {callState && selectedUser && (
         <CallModal

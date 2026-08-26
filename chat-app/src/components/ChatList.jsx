@@ -1,100 +1,123 @@
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
+
 export function Chatlist({
   users,
+  groups = [],
   onSelectUser,
   previews,
+  groupPreviews = {},
   searchTerm,
 }) {
   const search = searchTerm.trim().toLowerCase();
 
-  let chatUsers;
+  const userItems = users
+    .filter((user) => previews[user.id])
+    .map((user) => ({
+      type: "user",
+      id: user.id,
+      data: user,
+      preview: previews[user.id],
+      sortDate: previews[user.id]?.createdAt?.toDate?.() || new Date(0),
+    }));
+
+  const groupItems = groups.map((group) => ({
+    type: "group",
+    id: group.id,
+    data: group,
+    preview: groupPreviews[group.id],
+    sortDate: groupPreviews[group.id]?.createdAt?.toDate?.() || new Date(0),
+  }));
+
+  let chatItems;
 
   if (search === "") {
-    chatUsers = users
-      .filter((user) => previews[user.id])
-      .sort((a, b) => {
-        const dateA =
-          previews[a.id]?.createdAt?.toDate?.() || 0;
-
-        const dateB =
-          previews[b.id]?.createdAt?.toDate?.() || 0;
-
-        return dateB - dateA;
-      });
-  } else {
-    chatUsers = users.filter((user) =>
-      user.name?.toLowerCase().includes(search)
+    chatItems = [...userItems, ...groupItems].sort(
+      (a, b) => b.sortDate - a.sortDate,
     );
+  } else {
+    const filteredUsers = users
+      .filter((user) => user.name?.toLowerCase().includes(search))
+      .map((user) => ({
+        type: "user",
+        id: user.id,
+        data: user,
+        preview: previews[user.id],
+      }));
+
+    const filteredGroups = groups
+      .filter((group) => group.name?.toLowerCase().includes(search))
+      .map((group) => ({
+        type: "group",
+        id: group.id,
+        data: group,
+        preview: groupPreviews[group.id],
+      }));
+
+    chatItems = [...filteredUsers, ...filteredGroups];
   }
 
   return (
     <div className="chat-list">
+      {chatItems.length === 0 && <p className="no-users">No users found</p>}
 
-      {chatUsers.length === 0 && (
-        <p className="no-users">
-          No users found
-        </p>
-      )}
+      {chatItems.map((item) => {
+        const { type, id, data, preview } = item;
+        const isGroup = type === "group";
 
-      {chatUsers.map((user) => {
-        const preview = previews[user.id];
+        const senderName =
+          isGroup && preview?.senderId
+            ? users.find((u) => u.uid === preview.senderId)?.name || "Someone"
+            : "";
 
         return (
           <div
-            key={user.id}
+            key={id}
             className="chat-user"
-            onClick={() => onSelectUser(user)}
+            onClick={() => onSelectUser(data)}
           >
-
             <div className="prof-pic">
-              {user.avatar ? (
+              {isGroup ? (
+                <span>
+                  <FontAwesomeIcon icon={faUserGroup} />
+                </span>
+              ) : data.avatar ? (
                 <img
-                  src={user.avatar}
-                  alt={`${user.name}'s avatar`}
+                  src={data.avatar}
+                  alt={`${data.name}'s avatar`}
                   className="profile-avatar"
                 />
               ) : (
-                <span>
-                  {user.name?.charAt(0).toUpperCase()}
-                </span>
+                <span>{data.name?.charAt(0).toUpperCase()}</span>
               )}
             </div>
 
             <div className="chat-user-info">
-              <p className="chat-user-name">
-                {user.name}
-              </p>
+              <p className="chat-user-name">{data.name}</p>
 
               {preview ? (
                 <p className="last-message">
+                  {isGroup && senderName ? `${senderName}: ` : ""}
                   {preview.text}
                 </p>
               ) : (
                 <p className="last-message new-chat">
-                  Start a conversation
+                  {isGroup ? "No messages yet" : "Start a conversation"}
                 </p>
               )}
             </div>
 
             {preview?.createdAt && (
               <span className="last-message-time">
-                {preview.createdAt
-                  .toDate()
-                  .toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                {preview.createdAt.toDate().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             )}
-
           </div>
         );
       })}
-
     </div>
   );
 }
-
-
-
-
-

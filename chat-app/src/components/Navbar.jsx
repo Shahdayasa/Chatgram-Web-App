@@ -787,105 +787,241 @@ const handleCreateGroup = async () => {
         </>
       )}
 
-      {showContacts && (
+   {showContacts && (
+  <>
+    <div className="contacts-modal-overlay" onClick={closeContactsModal} />
+
+    <div className="contacts-modal">
+      {contactsMode === "list" && (
         <>
-          <div
-            className="contacts-modal-overlay"
-            onClick={() => {
-              setShowContacts(false);
-              setContactSearch("");
-            }}
-          />
-
-          <div className="contacts-modal">
-            <div className="contacts-header">
-              <div>
-                <h2>Add new contact</h2>
-
-                <p>
-                  {loadingContacts ? "Loading..." : `${contacts.length} users`}
-                </p>
-              </div>
-
-              <button
-                className="contacts-close"
-                onClick={() => {
-                  setShowContacts(false);
-                  setContactSearch("");
-                }}
-                aria-label="Close contacts"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </button>
+          <div className="contacts-header">
+            <div>
+              <h2>Add new contact</h2>
+              <p>
+                {loadingContacts ? "Loading..." : `${contacts.length} users`}
+              </p>
             </div>
 
-            <div className="contacts-search">
-              <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <button
+              className="contacts-close"
+              onClick={closeContactsModal}
+              aria-label="Close contacts"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
 
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={contactSearch}
-                onChange={(e) => setContactSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
+          <div className="contacts-search">
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={contactSearch}
+              onChange={(e) => setContactSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
 
-            <div className="new-group">
-              <FontAwesomeIcon className="group-icon" icon={faUserGroup} />
-              <button>
-                <span>New group</span>
-              </button>
-            </div>
+          <div className="new-group">
+            <FontAwesomeIcon className="group-icon" icon={faUserGroup} />
+            <button
+              type="button"
+              onClick={() => setContactsMode("selectMembers")}
+            >
+              <span>New group</span>
+            </button>
+          </div>
 
-            <div className="contacts-list">
-              {loadingContacts ? (
-                <div className="contacts-loading">Loading contacts...</div>
-              ) : filteredContacts.length > 0 ? (
-                filteredContacts.map((contact) => (
-                  <button
-                    key={contact.id}
-                    className="contact-item"
-                    onClick={() => handleSelectContact(contact)}
-                  >
-                    {contact.avatar ? (
-                      <img
-                        src={contact.avatar}
-                        alt={contact.name}
-                        className="contact-avatar"
-                      />
-                    ) : (
-                      <div className="contact-avatar-placeholder">
-                        {(contact.name || "U").charAt(0).toUpperCase()}
-                      </div>
-                    )}
-
-                    <div className="contact-info">
-                      <strong>{contact.name}</strong>
-
-                      <span>{contact.email}</span>
+          <div className="contacts-list">
+            {loadingContacts ? (
+              <div className="contacts-loading">Loading contacts...</div>
+            ) : filteredContacts.length > 0 ? (
+              filteredContacts.map((contact) => (
+                <button
+                  key={contact.id}
+                  className="contact-item"
+                  onClick={() => handleSelectContact(contact)}
+                >
+                  {contact.avatar ? (
+                    <img
+                      src={contact.avatar}
+                      alt={contact.name}
+                      className="contact-avatar"
+                    />
+                  ) : (
+                    <div className="contact-avatar-placeholder">
+                      {(contact.name || "U").charAt(0).toUpperCase()}
                     </div>
+                  )}
 
-                    {contact.isOnline && (
-                      <span className="contact-status online">Online</span>
-                    )}
-                  </button>
-                ))
-              ) : (
-                <div className="no-contacts">
-                  <div className="no-contacts-icon">
-                    <FontAwesomeIcon icon={faMagnifyingGlass} />
+                  <div className="contact-info">
+                    <strong>{contact.name}</strong>
+                    <span>{contact.email}</span>
                   </div>
 
-                  <h3>No users found</h3>
-
-                  <p>Try another name or email.</p>
+                  {contact.isOnline && (
+                    <span className="contact-status online">Online</span>
+                  )}
+                </button>
+              ))
+            ) : (
+              <div className="no-contacts">
+                <div className="no-contacts-icon">
+                  <FontAwesomeIcon icon={faMagnifyingGlass} />
                 </div>
-              )}
-            </div>
+                <h3>No users found</h3>
+                <p>Try another name or email.</p>
+              </div>
+            )}
           </div>
         </>
       )}
+
+      {contactsMode === "selectMembers" && (
+        <>
+          <div className="contacts-header">
+            <div className="contacts-header-title">
+              <button
+                type="button"
+                className="contacts-back"
+                onClick={() => setContactsMode("list")}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+              </button>
+              <div>
+                <h2>Add group members</h2>
+                <p>{selectedMembers.length} selected</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="contacts-search">
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={contactSearch}
+              onChange={(e) => setContactSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          {selectedMembers.length > 0 && (
+            <div className="selected-members-chips">
+              {selectedMembers.map((m) => (
+                <div key={m.id} className="selected-member-chip">
+                  <span>{m.name}</span>
+                  <button type="button" onClick={() => toggleMember(m)}>
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="contacts-list">
+            {filteredContacts.map((contact) => {
+              const isSelected = selectedMembers.some(
+                (m) => m.id === contact.id,
+              );
+
+              return (
+                <button
+                  key={contact.id}
+                  type="button"
+                  className="contact-item"
+                  onClick={() => toggleMember(contact)}
+                >
+                  {contact.avatar ? (
+                    <img
+                      src={contact.avatar}
+                      alt={contact.name}
+                      className="contact-avatar"
+                    />
+                  ) : (
+                    <div className="contact-avatar-placeholder">
+                      {(contact.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div className="contact-info">
+                    <strong>{contact.name}</strong>
+                    <span>{contact.email}</span>
+                  </div>
+
+                  <div
+                    className={`contact-checkbox ${isSelected ? "checked" : ""}`}
+                  >
+                    {isSelected && <FontAwesomeIcon icon={faCheck} />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="floating-next-button"
+            disabled={selectedMembers.length === 0}
+            onClick={() => setContactsMode("groupDetails")}
+          >
+            <FontAwesomeIcon icon={faArrowRight} />
+          </button>
+        </>
+      )}
+
+      {contactsMode === "groupDetails" && (
+        <>
+          <div className="contacts-header">
+            <div className="contacts-header-title">
+              <button
+                type="button"
+                className="contacts-back"
+                onClick={() => setContactsMode("selectMembers")}
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+              </button>
+              <div>
+                <h2>New group</h2>
+              </div>
+            </div>
+          </div>
+
+          <div className="group-details-body">
+            <div className="group-avatar-placeholder">
+              <FontAwesomeIcon icon={faUserGroup} />
+            </div>
+
+            <input
+              type="text"
+              className="group-name-input"
+              placeholder="Group name"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              maxLength={50}
+              autoFocus
+            />
+
+            <p className="group-members-summary">
+              {selectedMembers.length} member
+              {selectedMembers.length !== 1 ? "s" : ""}:{" "}
+              {selectedMembers.map((m) => m.name).join(", ")}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="floating-next-button"
+            disabled={!groupName.trim() || creatingGroup}
+            onClick={handleCreateGroup}
+          >
+            <FontAwesomeIcon icon={faCheck} />
+          </button>
+        </>
+      )}
+    </div>
+  </>
+)}
 
       {showLogoutConfirm && (
         <div className="confirm-overlay">
