@@ -18,6 +18,7 @@ import {
   faXmark,
   faPen,
   faCheck,
+  faUserGroup,
 } from "@fortawesome/free-solid-svg-icons";
 
 export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
@@ -757,6 +758,14 @@ const [editingDescription, setEditingDescription] = useState(false);
                 onChange={(e) => setContactSearch(e.target.value)}
                 autoFocus
               />
+            </div>
+
+            <div className="new-group">
+
+                <FontAwesomeIcon icon={faUserGroup} />
+              <button>
+                New group
+              </button>
             </div>
 
             <div className="contacts-list">

@@ -550,13 +550,14 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
                     </div>
                   )}
                   <p>{message.text}</p>
-                  {message.starredBy?.includes(currentUser?.uid) && (
-                    <FontAwesomeIcon
-                      icon={faStar}
-                      className="message-star-icon"
-                    />
-                  )}
+
                   <span>
+                    {message.starredBy?.includes(currentUser?.uid) && (
+                      <FontAwesomeIcon
+                        icon={faStar}
+                        className="message-star-icon"
+                      />
+                    )}
                     {message.createdAt?.toDate
                       ? message.createdAt.toDate().toLocaleTimeString([], {
                           hour: "2-digit",
