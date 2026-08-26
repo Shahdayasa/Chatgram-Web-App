@@ -601,8 +601,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   background-image: url("/src/assets/chat-background.png");
- /* background-color: #fffcf9; */
-  background-color: #8babd8;
+background-color: #fffcf9;
+ 
   background-position: center;
   background-size: contain;
 }
@@ -1411,8 +1411,7 @@ font-size: 14px;
 .empty-chat {
   align-items: center;
   justify-content: center;
-  /* background-color: #fffcf9; */
-  background-color: #8babd8;
+ background-color: #fffcf9;
 
 }
 
