@@ -9,6 +9,7 @@ import {
   orderBy,
   doc,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 
 import { Navbar } from "../components/Navbar";
@@ -36,7 +37,7 @@ export function Chat() {
   const [messages, setMessages] = useState([]);
   const [previews, setPreviews] = useState({});
   const [groups, setGroups] = useState([]);
-const [groupPreviews, setGroupPreviews] = useState({});
+  const [groupPreviews, setGroupPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const [callId, setCallId] = useState(null);
@@ -46,9 +47,11 @@ const [groupPreviews, setGroupPreviews] = useState({});
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const callIdRef = useRef(null);
+
   useEffect(() => {
     if (!remoteStream) {
       setIsSpeaking(false);
@@ -59,10 +62,15 @@ const [groupPreviews, setGroupPreviews] = useState({});
     const analyser = audioContext.createAnalyser();
 
     analyser.fftSize = 256;
-    const source = audioContext.createMediaStreamSource(remoteStream);
+
+    const source =
+      audioContext.createMediaStreamSource(remoteStream);
+
     source.connect(analyser);
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const dataArray = new Uint8Array(
+      analyser.frequencyBinCount,
+    );
 
     let animationFrame;
 
@@ -137,12 +145,13 @@ const [groupPreviews, setGroupPreviews] = useState({});
     const unsubscribe = onSnapshot(
       messageQuery,
       (snapshot) => {
-        const allMessages = snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }));
+        const allMessages = snapshot.docs.map(
+          (messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          }),
+        );
 
-        // Store latest message for each user
         const latestMessages = {};
 
         allMessages.forEach((message) => {
@@ -151,26 +160,62 @@ const [groupPreviews, setGroupPreviews] = useState({});
               ? message.receiverId
               : message.senderId;
 
-          latestMessages[otherUserId] = message;
+          if (otherUserId) {
+            latestMessages[otherUserId] = message;
+          }
         });
 
         setPreviews(latestMessages);
 
-        // Messages for selected user
-// Messages for selected user
-if (selectedUser && !selectedUser.isGroup) {
-  const selectedMessages = allMessages.filter(
-    (message) =>
-      (message.senderId === currentUserId &&
-        message.receiverId === selectedUser.uid) ||
-      (message.senderId === selectedUser.uid &&
-        message.receiverId === currentUserId),
-  );
+        allMessages.forEach((message) => {
+          if (
+            message.receiverId === currentUserId &&
+            message.senderId !== currentUserId &&
+            !message.delivered
+          ) {
+            updateDoc(doc(db, "messages", message.id), {
+              delivered: true,
+              deliveredAt: serverTimestamp(),
+            }).catch((error) => {
+              console.error(
+                "Error marking message delivered:",
+                error,
+              );
+            });
+          }
+        });
 
-  setMessages(selectedMessages);
-} else if (!selectedUser) {
-  setMessages([]);
-}
+        if (selectedUser && !selectedUser.isGroup) {
+          allMessages.forEach((message) => {
+            if (
+              message.senderId === selectedUser.uid &&
+              message.receiverId === currentUserId &&
+              !message.read
+            ) {
+              updateDoc(doc(db, "messages", message.id), {
+                read: true,
+                readAt: serverTimestamp(),
+              }).catch((error) => {
+                console.error(
+                  "Error marking message read:",
+                  error,
+                );
+              });
+            }
+          });
+
+          const selectedMessages = allMessages.filter(
+            (message) =>
+              (message.senderId === currentUserId &&
+                message.receiverId === selectedUser.uid) ||
+              (message.senderId === selectedUser.uid &&
+                message.receiverId === currentUserId),
+          );
+
+          setMessages(selectedMessages);
+        } else if (!selectedUser) {
+          setMessages([]);
+        }
       },
       (error) => {
         console.error("Error getting messages:", error);
@@ -179,109 +224,133 @@ if (selectedUser && !selectedUser.isGroup) {
 
     return () => unsubscribe();
   }, [selectedUser]);
+
   useEffect(() => {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
+    const currentUser = auth.currentUser;
 
-  const groupsQuery = query(
-    collection(db, "groups"),
-    where("members", "array-contains", currentUser.uid),
-  );
+    if (!currentUser) return;
 
-  const unsubscribe = onSnapshot(
-    groupsQuery,
-    (snapshot) => {
-      const groupsData = snapshot.docs.map((groupDoc) => ({
-        id: groupDoc.id,
-        uid: groupDoc.id,
-        isGroup: true,
-        ...groupDoc.data(),
-      }));
+    const groupsQuery = query(
+      collection(db, "groups"),
+      where("members", "array-contains", currentUser.uid),
+    );
 
-      setGroups(groupsData);
-    },
-    (error) => {
-      console.error("Error getting groups:", error);
-    },
-  );
+    const unsubscribe = onSnapshot(
+      groupsQuery,
+      (snapshot) => {
+        const groupsData = snapshot.docs.map((groupDoc) => ({
+          id: groupDoc.id,
+          uid: groupDoc.id,
+          isGroup: true,
+          ...groupDoc.data(),
+        }));
 
-  return () => unsubscribe();
-}, []);
+        setGroups(groupsData);
+      },
+      (error) => {
+        console.error("Error getting groups:", error);
+      },
+    );
 
-useEffect(() => {
-  if (groups.length === 0) {
-    setGroupPreviews({});
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (groups.length === 0) {
+      setGroupPreviews({});
+      return;
+    }
+
+    const groupIds = groups.map((g) => g.id).slice(0, 10);
+
+    const previewQuery = query(
+      collection(db, "messages"),
+      where("groupId", "in", groupIds),
+      orderBy("createdAt", "asc"),
+    );
+
+    const unsubscribe = onSnapshot(
+      previewQuery,
+      (snapshot) => {
+        const latest = {};
+
+        snapshot.docs.forEach((messageDoc) => {
+          const data = messageDoc.data();
+
+          latest[data.groupId] = {
+            id: messageDoc.id,
+            ...data,
+          };
+        });
+
+        setGroupPreviews(latest);
+      },
+      (error) => {
+        console.error("Error getting group previews:", error);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [groups]);
+
+  useEffect(() => {
+    if (!selectedUser?.isGroup) return;
+
+    const groupMessagesQuery = query(
+      collection(db, "messages"),
+      where("groupId", "==", selectedUser.id),
+      orderBy("createdAt", "asc"),
+    );
+
+    const unsubscribe = onSnapshot(
+      groupMessagesQuery,
+      (snapshot) => {
+        const groupMessages = snapshot.docs.map(
+          (messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          }),
+        );
+
+        setMessages(groupMessages);
+      },
+      (error) => {
+        console.error(
+          "Error getting group messages:",
+          error,
+        );
+      },
+    );
+
+    return () => unsubscribe();
+  }, [selectedUser]);
+const handleSend = async (message, replyTo) => {
+  if (!selectedUser || !auth.currentUser) {
     return;
   }
 
-  const groupIds = groups.map((g) => g.id).slice(0, 10);
+  const isImage = typeof message === "object";
 
-  const previewQuery = query(
-    collection(db, "messages"),
-    where("groupId", "in", groupIds),
-    orderBy("createdAt", "asc"),
-  );
+  const text = isImage ? "" : message;
+  const imageUrl = isImage ? message.imageUrl : null;
 
-  const unsubscribe = onSnapshot(
-    previewQuery,
-    (snapshot) => {
-      const latest = {};
-
-      snapshot.docs.forEach((messageDoc) => {
-        const data = messageDoc.data();
-        latest[data.groupId] = { id: messageDoc.id, ...data };
-      });
-
-      setGroupPreviews(latest);
-    },
-    (error) => {
-      console.error("Error getting group previews:", error);
-    },
-  );
-
-  return () => unsubscribe();
-}, [groups]);
-
-useEffect(() => {
-  if (!selectedUser?.isGroup) return;
-
-  const groupMessagesQuery = query(
-    collection(db, "messages"),
-    where("groupId", "==", selectedUser.id),
-    orderBy("createdAt", "asc"),
-  );
-
-  const unsubscribe = onSnapshot(
-    groupMessagesQuery,
-    (snapshot) => {
-      const groupMessages = snapshot.docs.map((messageDoc) => ({
-        id: messageDoc.id,
-        ...messageDoc.data(),
-      }));
-
-      setMessages(groupMessages);
-    },
-    (error) => {
-      console.error("Error getting group messages:", error);
-    },
-  );
-
-  return () => unsubscribe();
-}, [selectedUser]);
-
-const handleSend = async (text, replyTo) => {
-  if (!selectedUser || !auth.currentUser || !text.trim()) {
+  if (!text?.trim() && !imageUrl) {
     return;
   }
 
   const replyToData = replyTo
-    ? { id: replyTo.id, text: replyTo.text, senderId: replyTo.senderId }
+    ? {
+        id: replyTo.id,
+        text: replyTo.text,
+        senderId: replyTo.senderId,
+      }
     : null;
 
   try {
     if (selectedUser.isGroup) {
       await addDoc(collection(db, "messages"), {
-        text: text.trim(),
+        text: text?.trim() || "",
+        imageUrl: imageUrl || null,
         senderId: auth.currentUser.uid,
         groupId: selectedUser.id,
         isGroup: true,
@@ -290,16 +359,20 @@ const handleSend = async (text, replyTo) => {
       });
     } else {
       await addDoc(collection(db, "messages"), {
-        text: text.trim(),
+        text: text?.trim() || "",
+        imageUrl: imageUrl || null,
         senderId: auth.currentUser.uid,
         receiverId: selectedUser.uid,
-        participants: [auth.currentUser.uid, selectedUser.uid],
+        participants: [
+          auth.currentUser.uid,
+          selectedUser.uid,
+        ],
         createdAt: serverTimestamp(),
+        delivered: false,
+        read: false,
         replyTo: replyToData,
       });
     }
-
-    console.log("Message sent successfully");
   } catch (error) {
     console.error("Error sending message:", error);
   }
@@ -307,10 +380,7 @@ const handleSend = async (text, replyTo) => {
   useEffect(() => {
     const currentUser = auth.currentUser;
 
-    if (!currentUser) {
-      console.log("No authenticated user yet.");
-      return;
-    }
+    if (!currentUser) return;
 
     const userRef = doc(db, "users", currentUser.uid);
 
@@ -337,13 +407,17 @@ const handleSend = async (text, replyTo) => {
           merge: true,
         },
       ).catch((error) => {
-        console.error("Error setting user offline:", error);
+        console.error(
+          "Error setting user offline:",
+          error,
+        );
       });
     };
   }, []);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
+
     if (!currentUser) return;
 
     const callsQuery = query(
@@ -359,10 +433,14 @@ const handleSend = async (text, replyTo) => {
           setIncomingCall(null);
           return;
         }
+
         const callDoc = snapshot.docs[0];
         const callData = callDoc.data();
 
-        const caller = users.find((user) => user.uid === callData.callerId);
+        const caller = users.find(
+          (user) => user.uid === callData.callerId,
+        );
+
         if (!caller) return;
 
         setIncomingCall({
@@ -371,9 +449,13 @@ const handleSend = async (text, replyTo) => {
         });
       },
       (error) => {
-        console.error("Error Listening for incoming calls:", error);
+        console.error(
+          "Error Listening for incoming calls:",
+          error,
+        );
       },
     );
+
     return () => unsubscribe();
   }, [users]);
 
@@ -382,17 +464,15 @@ const handleSend = async (text, replyTo) => {
       return;
     }
 
+    if (selectedUser.isGroup) {
+      return;
+    }
+
     try {
-      console.log("CALL BUTTON CLICKED");
-
       const stream = await getAudioStream();
-
-      console.log("Microphone access granted");
 
       const callRef = doc(collection(db, "calls"));
       const newCallId = callRef.id;
-
-      console.log("Call ID:", newCallId);
 
       const pc = await createCall(
         newCallId,
@@ -400,23 +480,20 @@ const handleSend = async (text, replyTo) => {
         selectedUser.uid,
         stream,
         (remoteAudioStream) => {
-          console.log("Remote audio received");
           setRemoteStream(remoteAudioStream);
         },
       );
+
       peerConnectionRef.current = pc;
       localStreamRef.current = stream;
       callIdRef.current = newCallId;
+
       setCallId(newCallId);
       setCallState("calling");
       setLocalStream(stream);
       setPeerConnection(pc);
 
-      console.log("Call state set to calling");
-
       listenForAnswer(newCallId, pc, (status) => {
-        console.log("CALL STATUS:", status);
-
         if (status === "rejected" || status === "ended") {
           cleanupCall();
           return;
@@ -427,17 +504,19 @@ const handleSend = async (text, replyTo) => {
         }
       });
 
-listenForReceiverCandidates(newCallId, pc);
+      listenForReceiverCandidates(newCallId, pc);
 
-listenForCallStatus(newCallId, (status) => {
-  if (status === "ended" || status === "rejected") {
-    cleanupCall();
-    setIncomingCall(null);
-  }
-});
+      listenForCallStatus(newCallId, (status) => {
+        if (
+          status === "ended" ||
+          status === "rejected"
+        ) {
+          cleanupCall();
+          setIncomingCall(null);
+        }
+      });
     } catch (error) {
       console.error("Error starting call:", error);
-
       cleanupCall();
     }
   };
@@ -447,6 +526,7 @@ listenForCallStatus(newCallId, (status) => {
 
     try {
       const stream = await getAudioStream();
+
       const pc = await acceptCall(
         incomingCall.callId,
         stream,
@@ -454,24 +534,37 @@ listenForCallStatus(newCallId, (status) => {
           setRemoteStream(remoteAudioStream);
         },
       );
+
       peerConnectionRef.current = pc;
       localStreamRef.current = stream;
       callIdRef.current = incomingCall.callId;
+
       setCallId(incomingCall.callId);
       setCallState("connected");
       setLocalStream(stream);
       setPeerConnection(pc);
 
-      listenForCallerCandidates(incomingCall.callId, pc);
-      listenForCallStatus(incomingCall.callId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupCall();
-          setIncomingCall(null);
-        }
-      });
+      listenForCallerCandidates(
+        incomingCall.callId,
+        pc,
+      );
+
+      listenForCallStatus(
+        incomingCall.callId,
+        (status) => {
+          if (
+            status === "ended" ||
+            status === "rejected"
+          ) {
+            cleanupCall();
+            setIncomingCall(null);
+          }
+        },
+      );
+
       setIncomingCall(null);
     } catch (error) {
-      console.error("Error acceptong call:", error);
+      console.error("Error accepting call:", error);
     }
   };
 
@@ -485,43 +578,46 @@ listenForCallStatus(newCallId, (status) => {
       console.error("Error rejecting call:", error);
     }
   };
-const handleEndCall = async () => {
-  const id = callIdRef.current;
 
-  try {
-    if (id) {
-      await endCall(id);
+  const handleEndCall = async () => {
+    const id = callIdRef.current;
+
+    try {
+      if (id) {
+        await endCall(id);
+      }
+    } catch (error) {
+      console.error("Error ending call:", error);
     }
-  } catch (error) {
-    console.error("Error ending call:", error);
-  }
 
-  cleanupCall();
-  setIncomingCall(null);
-};
+    cleanupCall();
+    setIncomingCall(null);
+  };
 
-const cleanupCall = () => {
-  if (peerConnectionRef.current) {
-    peerConnectionRef.current.close();
-    peerConnectionRef.current = null;
-  }
+  const cleanupCall = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
 
-  if (localStreamRef.current) {
-    localStreamRef.current.getTracks().forEach((track) => {
-      track.stop();
-    });
-    localStreamRef.current = null;
-  }
+    if (localStreamRef.current) {
+      localStreamRef.current
+        .getTracks()
+        .forEach((track) => track.stop());
 
-  callIdRef.current = null;
+      localStreamRef.current = null;
+    }
 
-  setPeerConnection(null);
-  setLocalStream(null);
-  setRemoteStream(null);
-  setCallId(null);
-  setCallState(null);
-  setIsSpeaking(false);
-};
+    callIdRef.current = null;
+
+    setPeerConnection(null);
+    setLocalStream(null);
+    setRemoteStream(null);
+    setCallId(null);
+    setCallState(null);
+    setIsSpeaking(false);
+  };
+
   return (
     <div className="container">
       <div className="list">
@@ -531,27 +627,26 @@ const cleanupCall = () => {
           onSelectUser={setSelectedUser}
         />
 
-     <Chatlist
-  users={users}
-  groups={groups}
-  onSelectUser={setSelectedUser}
-  previews={previews}
-  groupPreviews={groupPreviews}
-  searchTerm={searchTerm}
-/>
+        <Chatlist
+          users={users}
+          groups={groups}
+          onSelectUser={setSelectedUser}
+          previews={previews}
+          groupPreviews={groupPreviews}
+          searchTerm={searchTerm}
+        />
       </div>
 
       <div className="chat-area">
-        <div className="chat-area">
-  <ChatWindow
-    selectedUser={selectedUser}
-    messages={messages}
-    onSend={handleSend}
-    onCall={handleCall}
-    users={users} 
-  />
-</div>
+        <ChatWindow
+          selectedUser={selectedUser}
+          messages={messages}
+          onSend={handleSend}
+          onCall={handleCall}
+          users={users}
+        />
       </div>
+
       {callState && selectedUser && (
         <CallModal
           selectedUser={selectedUser}
@@ -560,6 +655,7 @@ const cleanupCall = () => {
           isSpeaking={isSpeaking}
         />
       )}
+
       {incomingCall && (
         <IncomingCall
           caller={incomingCall.caller}

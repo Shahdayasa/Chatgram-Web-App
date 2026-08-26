@@ -9,6 +9,11 @@ import {
   arrayUnion,
   arrayRemove,
   deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -19,9 +24,7 @@ import {
   faChevronDown,
   faCircleInfo,
   faReply,
-  faCopy,
   faFaceSmile,
-  faShare,
   faThumbtack,
   faStar,
   faTrash,
@@ -56,13 +59,17 @@ const getLastSeen = (timestamp) => {
   const diffInHours = Math.floor(diffInMinutes / 60);
 
   if (diffInHours < 24) {
-    return `Last seen ${diffInHours} ${diffInHours === 1 ? "hour" : "hours"} ago`;
+    return `Last seen ${diffInHours} ${
+      diffInHours === 1 ? "hour" : "hours"
+    } ago`;
   }
 
   const diffInDays = Math.floor(diffInHours / 24);
 
   if (diffInDays < 7) {
-    return `Last seen ${diffInDays} ${diffInDays === 1 ? "day" : "days"} ago`;
+    return `Last seen ${diffInDays} ${
+      diffInDays === 1 ? "day" : "days"
+    } ago`;
   }
 
   return `Last seen ${lastSeenDate.toLocaleDateString()}`;
@@ -93,6 +100,7 @@ function ContextMenu({ x, y, onClose, children }) {
       padding,
       Math.min(top, window.innerHeight - menuRect.height - padding),
     );
+
     left = Math.max(
       padding,
       Math.min(left, window.innerWidth - menuRect.width - padding),
@@ -104,6 +112,7 @@ function ContextMenu({ x, y, onClose, children }) {
   return (
     <>
       <div className="message-context-overlay" onClick={onClose} />
+
       <div
         ref={menuRef}
         className="message-context-menu"
@@ -113,6 +122,135 @@ function ContextMenu({ x, y, onClose, children }) {
         {children}
       </div>
     </>
+  );
+}
+
+function MessageInfoPanel({ message, selectedUser, users, onClose }) {
+  if (!message) return null;
+
+  const currentUser = auth.currentUser;
+  const isMyMessage = message.senderId === currentUser?.uid;
+
+  const getUserName = (uid) => {
+    if (uid === currentUser?.uid) {
+      return "You";
+    }
+
+    const user = users?.find((u) => u.uid === uid || u.id === uid);
+
+    return user?.name || selectedUser?.name || "User";
+  };
+
+  const deliveredDate = message.deliveredAt?.toDate
+    ? message.deliveredAt.toDate()
+    : null;
+
+  const readDate = message.readAt?.toDate
+    ? message.readAt.toDate()
+    : null;
+
+  return (
+    <div className="message-info-overlay" onClick={onClose}>
+      <div
+        className="message-info-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="message-info-header">
+          <button
+            type="button"
+            className="message-info-close"
+            onClick={onClose}
+          >
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+
+          <h3>Message info</h3>
+        </div>
+
+        <div className="message-info-message">
+          <div
+            className={
+              isMyMessage
+                ? "message-info-bubble my-info-message"
+                : "message-info-bubble other-info-message"
+            }
+          >
+            <p>{message.text}</p>
+
+            <span>
+              {message.createdAt?.toDate
+                ? message.createdAt.toDate().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ""}
+            </span>
+          </div>
+        </div>
+
+        <div className="message-info-status">
+          <div className="message-info-row">
+            <div className="message-info-icon">
+              <FontAwesomeIcon icon={faCheck} />
+            </div>
+
+            <div className="message-info-text">
+              <strong>Delivered</strong>
+
+              <span>
+                {message.delivered
+                  ? deliveredDate
+                    ? deliveredDate.toLocaleString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                    : "Delivered"
+                  : "Not delivered"}
+              </span>
+            </div>
+          </div>
+
+          <div className="message-info-row">
+            <div
+              className={
+                message.read
+                  ? "message-info-icon read-icon"
+                  : "message-info-icon"
+              }
+            >
+              <FontAwesomeIcon icon={faCheck} />
+              <FontAwesomeIcon icon={faCheck} />
+            </div>
+
+            <div className="message-info-text">
+              <strong>Read</strong>
+
+              <span>
+                {message.read
+                  ? readDate
+                    ? readDate.toLocaleString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                    : "Read"
+                  : "Not read"}
+              </span>
+            </div>
+          </div>
+
+          <div className="message-info-sender">
+            <span>Sent by</span>
+            <strong>{getUserName(message.senderId)}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -134,16 +272,23 @@ function ContactInfoPanel({
     if (nameInput.trim()) {
       onRename(nameInput.trim());
     }
+
     setIsEditing(false);
   };
 
   return (
     <div className="contact-info-overlay">
       <div className="contact-info-header">
-        <button type="button" className="contact-info-close" onClick={onClose}>
+        <button
+          type="button"
+          className="contact-info-close"
+          onClick={onClose}
+        >
           <FontAwesomeIcon icon={faXmark} />
         </button>
+
         <h3>Contact info</h3>
+
         <button
           type="button"
           className="contact-info-edit"
@@ -166,7 +311,7 @@ function ContactInfoPanel({
             />
           ) : (
             <div className="contact-info-avatar-placeholder">
-            {displayName?.charAt(0).toUpperCase()}
+              {displayName?.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
@@ -179,6 +324,7 @@ function ContactInfoPanel({
               onChange={(e) => setNameInput(e.target.value)}
               autoFocus
             />
+
             <button type="button" onClick={handleSaveName}>
               <FontAwesomeIcon icon={faCheck} />
             </button>
@@ -187,7 +333,9 @@ function ContactInfoPanel({
           <h2 className="contact-info-name">{displayName}</h2>
         )}
 
-        {user.phone && <p className="contact-info-phone">{user.phone}</p>}
+        {user.phone && (
+          <p className="contact-info-phone">{user.phone}</p>
+        )}
 
         <div className="contact-info-actions">
           <button
@@ -198,10 +346,15 @@ function ContactInfoPanel({
             <FontAwesomeIcon icon={faPhone} />
             <span>Voice</span>
           </button>
-          <button type="button" className="contact-info-action">
+
+          <button
+            type="button"
+            className="contact-info-action"
+          >
             <FontAwesomeIcon icon={faVideo} />
             <span>Video</span>
           </button>
+
           <button
             type="button"
             className="contact-info-action"
@@ -214,8 +367,13 @@ function ContactInfoPanel({
 
         {user.description && (
           <div className="contact-info-section">
-            <span className="contact-info-section-label">About</span>
-            <p className="contact-info-about">{user.description}</p>
+            <span className="contact-info-section-label">
+              About
+            </span>
+
+            <p className="contact-info-about">
+              {user.description}
+            </p>
           </div>
         )}
 
@@ -223,6 +381,7 @@ function ContactInfoPanel({
           <div className="contact-info-media-header">
             <FontAwesomeIcon icon={faImages} />
             <span>Media, links and docs</span>
+
             <span className="contact-info-media-count">
               {mediaMessages.length}
             </span>
@@ -249,7 +408,14 @@ function ContactInfoPanel({
     </div>
   );
 }
-export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
+
+export function ChatWindow({
+  selectedUser,
+  messages,
+  onSend,
+  onCall,
+  users = [],
+}) {
   const currentUser = auth.currentUser;
 
   const [showMore, setShowMore] = useState(false);
@@ -264,13 +430,15 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const [currentUserName, setCurrentUserName] = useState("");
 
   const messageRefs = useRef({});
-  const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [showMessageInfo, setShowMessageInfo] = useState(false);
   const [contactNames, setContactNames] = useState({});
+
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -278,22 +446,23 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
     const userRef = doc(db, "users", currentUser.uid);
 
-   const unsubscribe = onSnapshot(userRef, (snapshot) => {
-  if (snapshot.exists()) {
-    const data = snapshot.data();
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
 
-    setAvatar(data.avatar || "");
-    setCurrentUserName(data.name || currentUser.displayName || "");
-
-    setBlockedUsers(data.blockedUsers || []);
-    setContactNames(data.contactNames || {});
-  } else {
-    setAvatar("");
-    setCurrentUserName(currentUser.displayName || "");
-    setBlockedUsers([]);
-    setContactNames({});
-  }
-});
+        setAvatar(data.avatar || "");
+        setCurrentUserName(
+          data.name || currentUser.displayName || "",
+        );
+        setBlockedUsers(data.blockedUsers || []);
+        setContactNames(data.contactNames || {});
+      } else {
+        setAvatar("");
+        setCurrentUserName(currentUser.displayName || "");
+        setBlockedUsers([]);
+        setContactNames({});
+      }
+    });
 
     return () => unsubscribe();
   }, []);
@@ -304,15 +473,19 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
   const searchMatches = chatSearch.trim()
     ? messages.filter((message) =>
-        message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()),
+        message.text
+          ?.toLowerCase()
+          .includes(chatSearch.toLowerCase().trim()),
       )
     : [];
 
   useEffect(() => {
-    if (chatSearch.trim()) return; // don't fight with search scrolling
+    if (chatSearch.trim()) return;
 
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+      messagesEndRef.current.scrollIntoView({
+        behavior: "auto",
+      });
     }
   }, [messages, selectedUser]);
 
@@ -323,15 +496,12 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
     const currentMatch = searchMatches[currentMatchIndex];
 
-    if (!currentMatch) {
-      return;
-    }
+    if (!currentMatch) return;
 
-    const messageElement = messageRefs.current[currentMatch.id];
+    const messageElement =
+      messageRefs.current[currentMatch.id];
 
-    if (!messageElement) {
-      return;
-    }
+    if (!messageElement) return;
 
     requestAnimationFrame(() => {
       messageElement.scrollIntoView({
@@ -343,6 +513,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
   const goToNextMatch = () => {
     if (searchMatches.length === 0) return;
+
     setCurrentMatchIndex((prev) =>
       prev + 1 >= searchMatches.length ? 0 : prev + 1,
     );
@@ -350,6 +521,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
 
   const goToPrevMatch = () => {
     if (searchMatches.length === 0) return;
+
     setCurrentMatchIndex((prev) =>
       prev - 1 < 0 ? searchMatches.length - 1 : prev - 1,
     );
@@ -395,7 +567,9 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
     if (!selectedMessage) return;
 
     try {
-      await deleteDoc(doc(db, "messages", selectedMessage.id));
+      await deleteDoc(
+        doc(db, "messages", selectedMessage.id),
+      );
     } catch (error) {
       console.error("Error deleting message:", error);
     } finally {
@@ -404,13 +578,60 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
     }
   };
 
+
+  const handleDeleteChat = async () => {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser || !selectedUser) return;
+
+  try {
+    const otherUserId = selectedUser.uid || selectedUser.id;
+
+    const sentQuery = query(
+      collection(db, "messages"),
+      where("senderId", "==", currentUser.uid),
+      where("receiverId", "==", otherUserId)
+    );
+
+    const receivedQuery = query(
+      collection(db, "messages"),
+      where("senderId", "==", otherUserId),
+      where("receiverId", "==", currentUser.uid)
+    );
+
+    const [sentSnapshot, receivedSnapshot] = await Promise.all([
+      getDocs(sentQuery),
+      getDocs(receivedQuery),
+    ]);
+
+    const batch = writeBatch(db);
+
+    sentSnapshot.forEach((messageDoc) => {
+      batch.delete(messageDoc.ref);
+    });
+
+    receivedSnapshot.forEach((messageDoc) => {
+      batch.delete(messageDoc.ref);
+    });
+
+    await batch.commit();
+
+    setShowMore(false);
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+  }
+};
+
   const handleTogglePin = async () => {
     if (!selectedMessage) return;
 
     try {
-      await updateDoc(doc(db, "messages", selectedMessage.id), {
-        pinned: !selectedMessage.pinned,
-      });
+      await updateDoc(
+        doc(db, "messages", selectedMessage.id),
+        {
+          pinned: !selectedMessage.pinned,
+        },
+      );
     } catch (error) {
       console.error("Error toggling pin:", error);
     } finally {
@@ -422,14 +643,18 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const handleToggleStar = async () => {
     if (!selectedMessage || !currentUser) return;
 
-    const isStarred = selectedMessage.starredBy?.includes(currentUser.uid);
+    const isStarred =
+      selectedMessage.starredBy?.includes(currentUser.uid);
 
     try {
-      await updateDoc(doc(db, "messages", selectedMessage.id), {
-        starredBy: isStarred
-          ? arrayRemove(currentUser.uid)
-          : arrayUnion(currentUser.uid),
-      });
+      await updateDoc(
+        doc(db, "messages", selectedMessage.id),
+        {
+          starredBy: isStarred
+            ? arrayRemove(currentUser.uid)
+            : arrayUnion(currentUser.uid),
+        },
+      );
     } catch (error) {
       console.error("Error toggling star:", error);
     } finally {
@@ -437,32 +662,40 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
       setContextMenu(null);
     }
   };
-const displayName = selectedUser
-  ? contactNames[selectedUser.uid] || selectedUser.name
-  : "";
 
-const handleRenameContact = async (newName) => {
-  if (!currentUser || !selectedUser || !newName.trim()) return;
+  const displayName = selectedUser
+    ? contactNames[selectedUser.uid] || selectedUser.name
+    : "";
 
-  try {
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      [`contactNames.${selectedUser.uid}`]: newName.trim(),
-    });
-  } catch (error) {
-    console.error("Error renaming contact:", error);
-  }
-};
-  const handleSend = (text, replyTo) => {
-    if (isBlocked) {
+  const handleRenameContact = async (newName) => {
+    if (!currentUser || !selectedUser || !newName.trim()) {
       return;
     }
+
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        [`contactNames.${selectedUser.uid}`]: newName.trim(),
+      });
+    } catch (error) {
+      console.error("Error renaming contact:", error);
+    }
+  };
+
+  const handleSend = (text, replyTo) => {
+    if (isBlocked) return;
 
     onSend(text, replyTo);
   };
 
   const renderAvatar = (image, name, alt) => {
     if (image) {
-      return <img src={image} alt={alt} className="message-avatar-image" />;
+      return (
+        <img
+          src={image}
+          alt={alt}
+          className="message-avatar-image"
+        />
+      );
     }
 
     return (
@@ -480,7 +713,9 @@ const handleRenameContact = async (newName) => {
 
           <h2>Start a new conversation</h2>
 
-          <p>Select a user from the chat list to start chatting.</p>
+          <p>
+            Select a user from the chat list to start chatting.
+          </p>
         </div>
       </div>
     );
@@ -514,7 +749,6 @@ const handleRenameContact = async (newName) => {
                 type="button"
                 onClick={goToPrevMatch}
                 disabled={searchMatches.length === 0}
-                aria-label="Previous match"
               >
                 <FontAwesomeIcon icon={faChevronUp} />
               </button>
@@ -523,7 +757,6 @@ const handleRenameContact = async (newName) => {
                 type="button"
                 onClick={goToNextMatch}
                 disabled={searchMatches.length === 0}
-                aria-label="Next match"
               >
                 <FontAwesomeIcon icon={faChevronDown} />
               </button>
@@ -546,19 +779,21 @@ const handleRenameContact = async (newName) => {
               onClick={() => setShowContactInfo(true)}
               style={{ cursor: "pointer" }}
             >
-       {selectedUser.avatar ? (
-  <img
-    src={selectedUser.avatar}
-    alt={`${displayName}'s avatar`}
-    className="profile-avatar"
-  />
-) : (
-  <span>{displayName?.charAt(0).toUpperCase()}</span>
-)}
-</div>
+              {selectedUser.avatar ? (
+                <img
+                  src={selectedUser.avatar}
+                  alt={`${displayName}'s avatar`}
+                  className="profile-avatar"
+                />
+              ) : (
+                <span>
+                  {displayName?.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
 
-<div className="name-status">
-  <h3>{displayName}</h3>
+            <div className="name-status">
+              <h3>{displayName}</h3>
 
               <p>
                 {isBlocked
@@ -631,6 +866,7 @@ const handleRenameContact = async (newName) => {
       {messages.some((m) => m.pinned) && (
         <div className="pinned-bar">
           <FontAwesomeIcon icon={faThumbtack} />
+
           <div className="pinned-bar-list">
             {messages
               .filter((m) => m.pinned)
@@ -640,7 +876,11 @@ const handleRenameContact = async (newName) => {
                   className="pinned-bar-item"
                   onClick={() => {
                     const el = messageRefs.current[m.id];
-                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+                    el?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
                   }}
                 >
                   {m.text}
@@ -650,20 +890,24 @@ const handleRenameContact = async (newName) => {
         </div>
       )}
 
-      <div className="messages" ref={messagesContainerRef}>
+      <div className="messages">
         <div className="messages-content">
           {messages.map((message) => {
-            const isMyMessage = message.senderId === currentUser?.uid;
+            const isMyMessage =
+              message.senderId === currentUser?.uid;
 
             const isCurrentMatch =
               chatSearch.trim() &&
               searchMatches.length > 0 &&
-              searchMatches[currentMatchIndex]?.id === message.id;
+              searchMatches[currentMatchIndex]?.id ===
+                message.id;
 
             return (
               <div
                 key={message.id}
-                ref={(el) => (messageRefs.current[message.id] = el)}
+                ref={(el) =>
+                  (messageRefs.current[message.id] = el)
+                }
                 className={
                   isMyMessage
                     ? "message-row my-message-row"
@@ -684,13 +928,18 @@ const handleRenameContact = async (newName) => {
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setSelectedMessage(message);
-                    setContextMenu({ x: e.clientX, y: e.clientY });
+                    setContextMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
                   }}
                   className={
                     (isMyMessage
                       ? "message my-message"
                       : "message other-message") +
-                    (isCurrentMatch ? " message-highlighted" : "")
+                    (isCurrentMatch
+                      ? " message-highlighted"
+                      : "")
                   }
                   style={{
                     transform:
@@ -703,27 +952,35 @@ const handleRenameContact = async (newName) => {
                   {message.replyTo && (
                     <div className="reply-quote">
                       <span>
-                        {message.replyTo.senderId === currentUser?.uid
+                        {message.replyTo.senderId ===
+                        currentUser?.uid
                           ? "You"
                           : selectedUser.name}
                       </span>
+
                       <p>{message.replyTo.text}</p>
                     </div>
                   )}
+
                   <p>{message.text}</p>
 
                   <span>
-                    {message.starredBy?.includes(currentUser?.uid) && (
+                    {message.starredBy?.includes(
+                      currentUser?.uid,
+                    ) && (
                       <FontAwesomeIcon
                         icon={faStar}
                         className="message-star-icon"
                       />
                     )}
+
                     {message.createdAt?.toDate
-                      ? message.createdAt.toDate().toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                      ? message.createdAt
+                          .toDate()
+                          .toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                       : ""}
                   </span>
                 </div>
@@ -764,97 +1021,129 @@ const handleRenameContact = async (newName) => {
               setContextMenu(null);
             }}
           >
-            <FontAwesomeIcon icon={faReply} /> Reply
+            <FontAwesomeIcon icon={faReply} />
+            Reply
           </button>
+
           <button type="button" onClick={handleTogglePin}>
             <FontAwesomeIcon icon={faThumbtack} />
             {selectedMessage?.pinned ? "Unpin" : "Pin"}
           </button>
+
           <button type="button" onClick={handleToggleStar}>
             <FontAwesomeIcon icon={faStar} />
-            {selectedMessage?.starredBy?.includes(currentUser?.uid)
+
+            {selectedMessage?.starredBy?.includes(
+              currentUser?.uid,
+            )
               ? "Unstar"
               : "Star"}
           </button>
-          <button type="button">
-            <FontAwesomeIcon icon={faCircleInfo} /> Message Info
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowMessageInfo(true);
+              setContextMenu(null);
+            }}
+          >
+            <FontAwesomeIcon icon={faCircleInfo} />
+            Message Info
           </button>
+
           <button
             type="button"
             className="danger"
             onClick={handleDeleteMessage}
           >
-            <FontAwesomeIcon icon={faTrash} /> Delete
+            <FontAwesomeIcon icon={faTrash} />
+            Delete
           </button>
         </ContextMenu>
       )}
-{showContactInfo && (
-  <ContactInfoPanel
-    user={selectedUser}
-    displayName={displayName}
-    messages={messages}
-    onClose={() => setShowContactInfo(false)}
-    onRename={handleRenameContact}
-    onCall={() => {
-      setShowContactInfo(false);
-      onCall();
-    }}
-    onSearch={() => {
-      setShowContactInfo(false);
-      setShowSearch(true);
-    }}
-  />
-)}
-      {isBlocked ? (
-        <div className="blocked-message">
 
-                 <button
-            type="button"
-            className="delete-chat"
-          >
-           Delete chat
-          </button>
-          <button
-            type="button"
-            className="unblock-button"
-            onClick={handleBlockToggle}
-            disabled={loadingBlock}
-          >
-            {loadingBlock ? "Please wait..." : "Unblock"}
-          </button>
-
-         
-        </div>
-      ) : (
-        <>
-          {replyingTo && (
-            <div className="reply-preview">
-              <div className="reply-preview-content">
-                <span className="reply-preview-label">
-                  Replying to{" "}
-                  {replyingTo.senderId === currentUser?.uid
-                    ? "yourself"
-                    : selectedUser.name}
-                </span>
-                <p>{replyingTo.text}</p>
-              </div>
-              <button
-                type="button"
-                className="reply-preview-close"
-                onClick={() => setReplyingTo(null)}
-              >
-                ×
-              </button>
-            </div>
-          )}
-          <MessageInput
-            onSend={(text) => {
-              handleSend(text, replyingTo);
-              setReplyingTo(null);
-            }}
-          />
-        </>
+      {showMessageInfo && selectedMessage && (
+        <MessageInfoPanel
+          message={selectedMessage}
+          selectedUser={selectedUser}
+          users={users}
+          onClose={() => {
+            setShowMessageInfo(false);
+            setSelectedMessage(null);
+          }}
+        />
       )}
+
+      {showContactInfo && (
+        <ContactInfoPanel
+          user={selectedUser}
+          displayName={displayName}
+          messages={messages}
+          onClose={() => setShowContactInfo(false)}
+          onRename={handleRenameContact}
+          onCall={() => {
+            setShowContactInfo(false);
+            onCall();
+          }}
+          onSearch={() => {
+            setShowContactInfo(false);
+            setShowSearch(true);
+          }}
+        />
+      )}
+
+  {isBlocked ? (
+  <div className="blocked-message">
+    <button
+      type="button"
+      className="delete-chat"
+      onClick={handleDeleteChat}
+    >
+      Delete chat
+    </button>
+
+    <button
+      type="button"
+      className="unblock-button"
+      onClick={handleBlockToggle}
+      disabled={loadingBlock}
+    >
+      {loadingBlock ? "Please wait..." : "Unblock"}
+    </button>
+  </div>
+) : (
+  <>
+    {replyingTo && (
+      <div className="reply-preview">
+        <div className="reply-preview-content">
+          <span className="reply-preview-label">
+            Replying to{" "}
+            {replyingTo.senderId === currentUser?.uid
+              ? "yourself"
+              : selectedUser.name}
+          </span>
+
+          <p>{replyingTo.text}</p>
+        </div>
+
+        <button
+          type="button"
+          className="reply-preview-close"
+          onClick={() => setReplyingTo(null)}
+        >
+          ×
+        </button>
+      </div>
+    )}
+
+    <MessageInput
+      onSend={(text) => {
+        handleSend(text, replyingTo);
+        setReplyingTo(null);
+      }}
+    />
+  </>
+)}
     </div>
   );
 }
