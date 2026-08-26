@@ -25,6 +25,11 @@ import {
   faThumbtack,
   faStar,
   faTrash,
+  faXmark,
+  faPen,
+  faPhone,
+  faVideo,
+  faImages,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -110,6 +115,93 @@ function ContextMenu({ x, y, onClose, children }) {
   );
 }
 
+function ContactInfoPanel({ user, messages, onClose }) {
+  const mediaMessages = messages.filter((m) => m.imageUrl);
+
+  return (
+    <div className="contact-info-overlay">
+      <div className="contact-info-header">
+        <button type="button" className="contact-info-close" onClick={onClose}>
+          <FontAwesomeIcon icon={faXmark} />
+        </button>
+        <h3>Contact info</h3>
+        <button type="button" className="contact-info-edit">
+          <FontAwesomeIcon icon={faPen} />
+        </button>
+      </div>
+
+      <div className="contact-info-body">
+        <div className="contact-info-avatar-wrapper">
+          {user.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name}
+              className="contact-info-avatar"
+            />
+          ) : (
+            <div className="contact-info-avatar-placeholder">
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        <h2 className="contact-info-name">{user.name}</h2>
+
+        {user.phone && <p className="contact-info-phone">{user.phone}</p>}
+
+        <div className="contact-info-actions">
+          <button type="button" className="contact-info-action">
+            <FontAwesomeIcon icon={faPhone} />
+            <span>Voice</span>
+          </button>
+          <button type="button" className="contact-info-action">
+            <FontAwesomeIcon icon={faVideo} />
+            <span>Video</span>
+          </button>
+          <button type="button" className="contact-info-action">
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <span>Search</span>
+          </button>
+        </div>
+
+        {user.about && (
+          <div className="contact-info-section">
+            <span className="contact-info-section-label">About</span>
+            <p className="contact-info-about">{user.about}</p>
+          </div>
+        )}
+
+        <div className="contact-info-section">
+          <div className="contact-info-media-header">
+            <FontAwesomeIcon icon={faImages} />
+            <span>Media, links and docs</span>
+            <span className="contact-info-media-count">
+              {mediaMessages.length}
+            </span>
+          </div>
+
+          {mediaMessages.length > 0 ? (
+            <div className="contact-info-media-grid">
+              {mediaMessages.slice(0, 9).map((m) => (
+                <img
+                  key={m.id}
+                  src={m.imageUrl}
+                  alt=""
+                  className="contact-info-media-thumb"
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="contact-info-no-media">
+              No media, links, or docs yet
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const currentUser = auth.currentUser;
 
@@ -130,6 +222,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [showContactInfo, setShowContactInfo] = useState(false);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -384,7 +477,11 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
       ) : (
         <div className="chat-header">
           <div className="prof-name-seen">
-            <div className="prof-pic">
+            <div
+              className="prof-pic"
+              onClick={() => setShowContactInfo(true)}
+              style={{ cursor: "pointer" }}
+            >
               {selectedUser.avatar ? (
                 <img
                   src={selectedUser.avatar}
@@ -395,7 +492,6 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
                 <span>{selectedUser.name?.charAt(0).toUpperCase()}</span>
               )}
             </div>
-
             <div className="name-status">
               <h3>{selectedUser.name}</h3>
 
@@ -627,6 +723,13 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall }) {
           </button>
         </ContextMenu>
       )}
+      {showContactInfo && (
+  <ContactInfoPanel
+    user={selectedUser}
+    messages={messages}
+    onClose={() => setShowContactInfo(false)}
+  />
+)}
       {isBlocked ? (
         <div className="blocked-message">
           <button
