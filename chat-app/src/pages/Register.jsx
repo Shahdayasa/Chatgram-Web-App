@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
 import { doc, setDoc } from "firebase/firestore";
@@ -6,15 +7,16 @@ import { doc, setDoc } from "firebase/firestore";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 
-export function Register({ showToast, onBackToLogin }) {
+export function Register({ showToast }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone,setPhone] = useState("");
+  const [phone, setPhone] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
+  const navigate = useNavigate();
 
-    const handleAvatarChange = (e) => {
+  const handleAvatarChange = (e) => {
     const file = e.target.files[0];
 
     if (!file) return;
@@ -31,7 +33,6 @@ export function Register({ showToast, onBackToLogin }) {
 
     setAvatar(file);
 
-   
     const imageUrl = URL.createObjectURL(file);
     setAvatarPreview(imageUrl);
   };
@@ -39,15 +40,15 @@ export function Register({ showToast, onBackToLogin }) {
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !password ||!phone) {
+    if (!name || !email || !password || !phone) {
       showToast("Please fill in all fields", "error");
       return;
     }
 
     if (!/^[0-9+\-\s()]{7,20}$/.test(phone.trim())) {
-  showToast("Please enter a valid phone number", "error");
-  return;
-}
+      showToast("Please enter a valid phone number", "error");
+      return;
+    }
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -60,34 +61,28 @@ export function Register({ showToast, onBackToLogin }) {
 
       let avatarUrl = "";
 
-     if (avatar) {
-  const formData = new FormData();
+      if (avatar) {
+        const formData = new FormData();
 
-  formData.append("file", avatar);
-  formData.append("upload_preset", "chat_avatars");
+        formData.append("file", avatar);
+        formData.append("upload_preset", "chat_avatars");
 
-  const response = await fetch(
-    "https://api.cloudinary.com/v1_1/zhycdkaz/image/upload",
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/zhycdkaz/image/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-  const data = await response.json();
+        const data = await response.json();
 
-  console.log("Cloudinary response:", data);
+        if (!response.ok) {
+          throw new Error(data.error?.message || "Cloudinary upload failed");
+        }
 
-  if (!response.ok) {
-    throw new Error(
-      data.error?.message || "Cloudinary upload failed"
-    );
-  }
-
-  avatarUrl = data.secure_url;
-
-  console.log("Avatar URL:", avatarUrl);
-}
+        avatarUrl = data.secure_url;
+      }
 
       await setDoc(doc(db, "users", user.uid), {
         name,
@@ -104,6 +99,8 @@ export function Register({ showToast, onBackToLogin }) {
       setPassword("");
       setAvatar(null);
       setAvatarPreview("");
+
+      navigate("/chat");
     } catch (err) {
       console.error(err);
 
@@ -112,20 +109,11 @@ export function Register({ showToast, onBackToLogin }) {
       } else if (err.code === "auth/invalid-email") {
         showToast("Please enter a valid email", "error");
       } else if (err.code === "auth/weak-password") {
-        showToast(
-          "Password should be at least 6 characters",
-          "error"
-        );
+        showToast("Password should be at least 6 characters", "error");
       } else if (err.message === "Failed to upload avatar") {
-        showToast(
-          "Account created, but avatar upload failed",
-          "error"
-        );
+        showToast("Account created, but avatar upload failed", "error");
       } else {
-        showToast(
-          "Something went wrong. Please try again.",
-          "error"
-        );
+        showToast("Something went wrong. Please try again.", "error");
       }
     }
   };
@@ -133,16 +121,13 @@ export function Register({ showToast, onBackToLogin }) {
   return (
     <div className="create-account">
       <form onSubmit={handleRegister}>
-
         <div className="auth-icon">
           <FontAwesomeIcon icon={faWhatsapp} />
         </div>
 
         <h2>Create Account</h2>
 
-  
         <div className="avatar-upload">
-
           <label htmlFor="avatarInput" className="avatar-label">
             {avatarPreview ? (
               <img
@@ -151,9 +136,7 @@ export function Register({ showToast, onBackToLogin }) {
                 className="avatar-preview"
               />
             ) : (
-              <div className="avatar-placeholder">
-                +
-              </div>
+              <div className="avatar-placeholder">+</div>
             )}
           </label>
 
@@ -168,7 +151,6 @@ export function Register({ showToast, onBackToLogin }) {
           <p>Choose profile picture</p>
         </div>
 
-      
         <div className="name">
           <input
             type="text"
@@ -178,15 +160,14 @@ export function Register({ showToast, onBackToLogin }) {
           />
         </div>
 
-
-          <div className="phone">
-            <input 
-            type="tel" 
+        <div className="phone">
+          <input
+            type="tel"
             value={phone}
-            placeholder="Phone number..." 
+            placeholder="Phone number..."
             onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
+          />
+        </div>
 
         <div className="email">
           <input
@@ -206,18 +187,15 @@ export function Register({ showToast, onBackToLogin }) {
           />
         </div>
 
-        <button type="submit">
-          Create Account
-        </button>
+        <button type="submit">Create Account</button>
 
         <button
           type="button"
           className="back-login"
-          onClick={onBackToLogin}
+          onClick={() => navigate("/login")}
         >
           Back to Login
         </button>
-
       </form>
     </div>
   );

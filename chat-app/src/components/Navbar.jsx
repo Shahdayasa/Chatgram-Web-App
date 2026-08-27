@@ -43,7 +43,7 @@ export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
   const [editingDescription, setEditingDescription] = useState(false);
   const [newDescription, setNewDescription] = useState("");
   const [savingDescription, setSavingDescription] = useState(false);
-  //const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [phone, setPhone] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [editingPhone, setEditingPhone] = useState(false);
@@ -52,6 +52,8 @@ export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [groupName, setGroupName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+const [groupAvatar, setGroupAvatar] = useState(null);
+const [groupAvatarPreview, setGroupAvatarPreview] = useState("");
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -59,7 +61,7 @@ export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
   });
 
   const avatarInputRef = useRef(null);
-
+const groupAvatarInputRef = useRef(null);
   const showToast = (message, type) => {
     setToast({
       show: true,
@@ -354,12 +356,33 @@ export function Navbar({ searchTerm, setSearchTerm, onSelectUser }) {
     }
   };
 
-  const closeContactsModal = () => {
+const closeContactsModal = () => {
   setShowContacts(false);
   setContactSearch("");
   setContactsMode("list");
   setSelectedMembers([]);
   setGroupName("");
+  /* ==== NEW ==== */
+  setGroupAvatar(null);
+  setGroupAvatarPreview("");
+};
+
+const handleGroupAvatarChange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("Please choose an image file.", "error");
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast("Image must be less than 5 MB.", "error");
+    return;
+  }
+
+  setGroupAvatar(file);
+  setGroupAvatarPreview(URL.createObjectURL(file));
 };
 
 const toggleMember = (contact) => {
@@ -392,24 +415,42 @@ const handleCreateGroup = async () => {
   try {
     setCreatingGroup(true);
 
-    const groupRef = doc(collection(db, "groups"));
+    let groupAvatarUrl = "";
 
+    if (groupAvatar) {
+      const formData = new FormData();
+      formData.append("file", groupAvatar);
+      formData.append("upload_preset", "chat_avatars");
+
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/zhycdkaz/image/upload",
+        { method: "POST", body: formData }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Cloudinary upload failed");
+      }
+
+      groupAvatarUrl = data.secure_url;
+    }
+
+    const groupRef = doc(collection(db, "groups"));
     const memberIds = [
       currentUser.uid,
       ...selectedMembers.map((m) => m.uid || m.id),
     ];
 
     await setDoc(groupRef, {
-      id: groupRef.id,
       name: trimmedName,
-      avatar: "",
+      avatar: groupAvatarUrl,
       members: memberIds,
       createdBy: currentUser.uid,
       createdAt: serverTimestamp(),
     });
 
     showToast("Group created successfully!", "success");
-
     closeContactsModal();
   } catch (error) {
     console.error("Error creating group:", error);
@@ -990,29 +1031,51 @@ const handleCreateGroup = async () => {
               </div>
             </div>
           </div>
+<div className="group-details-body">
+  <div
+    className="group-avatar-placeholder"
+    onClick={() => groupAvatarInputRef.current?.click()}
+    style={{ cursor: "pointer", overflow: "hidden", position: "relative" }}
+  >
+    {groupAvatarPreview ? (
+      <img
+        src={groupAvatarPreview}
+        alt="Group avatar"
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    ) : (
+      <FontAwesomeIcon icon={faUserGroup} />
+    )}
 
-          <div className="group-details-body">
-            <div className="group-avatar-placeholder">
-              <FontAwesomeIcon icon={faUserGroup} />
-            </div>
+    <div className="avatar-hover-overlay">
+      <FontAwesomeIcon icon={faPen} style={{ color: "#fff", fontSize: 18 }} />
+    </div>
+  </div>
 
-            <input
-              type="text"
-              className="group-name-input"
-              placeholder="Group name"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              maxLength={50}
-              autoFocus
-            />
+  <input
+    ref={groupAvatarInputRef}
+    type="file"
+    accept="image/*"
+    onChange={handleGroupAvatarChange}
+    hidden
+  />
 
-            <p className="group-members-summary">
-              {selectedMembers.length} member
-              {selectedMembers.length !== 1 ? "s" : ""}:{" "}
-              {selectedMembers.map((m) => m.name).join(", ")}
-            </p>
-          </div>
+  <input
+    type="text"
+    className="group-name-input"
+    placeholder="Group name"
+    value={groupName}
+    onChange={(e) => setGroupName(e.target.value)}
+    maxLength={50}
+    autoFocus
+  />
 
+  <p className="group-members-summary">
+    {selectedMembers.length} member
+    {selectedMembers.length !== 1 ? "s" : ""}:{" "}
+    {selectedMembers.map((m) => m.name).join(", ")}
+  </p>
+</div>
           <button
             type="button"
             className="floating-next-button"

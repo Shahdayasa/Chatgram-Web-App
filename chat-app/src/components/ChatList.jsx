@@ -9,6 +9,7 @@ export function Chatlist({
   previews,
   groupPreviews = {},
   searchTerm,
+  unreadCounts = {}, 
 }) {
   const search = searchTerm.trim().toLowerCase();
 
@@ -19,7 +20,8 @@ export function Chatlist({
       id: user.id,
       data: user,
       preview: previews[user.id],
-      sortDate: previews[user.id]?.createdAt?.toDate?.() || new Date(0),
+      sortDate:
+        previews[user.id]?.createdAt?.toDate?.() || new Date(0),
     }));
 
   const groupItems = groups.map((group) => ({
@@ -27,7 +29,8 @@ export function Chatlist({
     id: group.id,
     data: group,
     preview: groupPreviews[group.id],
-    sortDate: groupPreviews[group.id]?.createdAt?.toDate?.() || new Date(0),
+    sortDate:
+      groupPreviews[group.id]?.createdAt?.toDate?.() || new Date(0),
   }));
 
   let chatItems;
@@ -38,7 +41,9 @@ export function Chatlist({
     );
   } else {
     const filteredUsers = users
-      .filter((user) => user.name?.toLowerCase().includes(search))
+      .filter((user) =>
+        user.name?.toLowerCase().includes(search),
+      )
       .map((user) => ({
         type: "user",
         id: user.id,
@@ -47,7 +52,9 @@ export function Chatlist({
       }));
 
     const filteredGroups = groups
-      .filter((group) => group.name?.toLowerCase().includes(search))
+      .filter((group) =>
+        group.name?.toLowerCase().includes(search),
+      )
       .map((group) => ({
         type: "group",
         id: group.id,
@@ -59,15 +66,19 @@ export function Chatlist({
   }
 
   const getPreviewText = (preview) => {
-    if (preview.text?.trim()) return preview.text;
-    if (preview.imageUrl) return "📷 Photo";
-    if (preview.fileUrl) return `📎 ${preview.fileName || "File"}`;
+    if (preview?.text?.trim()) return preview.text;
+    if (preview?.imageUrl) return "📷 Photo";
+    if (preview?.fileUrl) {
+      return `📎 ${preview.fileName || "File"}`;
+    }
     return "";
   };
 
   return (
     <div className="chat-list">
-      {chatItems.length === 0 && <p className="no-users">No users found</p>}
+      {chatItems.length === 0 && (
+        <p className="no-users">No users found</p>
+      )}
 
       {chatItems.map((item) => {
         const { type, id, data, preview } = item;
@@ -79,8 +90,15 @@ export function Chatlist({
           isGroup && preview?.senderId
             ? preview.senderId === currentUser?.uid
               ? "You"
-              : users.find((u) => u.uid === preview.senderId)?.name || "Someone"
+              : users.find(
+                  (u) =>
+                    u.uid === preview.senderId ||
+                    u.id === preview.senderId,
+                )?.name || "Someone"
             : "";
+
+       
+        const unreadCount = !isGroup ? unreadCounts[id] || 0 : 0;
 
         return (
           <div
@@ -90,9 +108,17 @@ export function Chatlist({
           >
             <div className="prof-pic">
               {isGroup ? (
-                <span>
-                  <FontAwesomeIcon icon={faUserGroup} />
-                </span>
+                data.avatar ? (
+                  <img
+                    src={data.avatar}
+                    alt={`${data.name} avatar`}
+                    className="profile-avatar"
+                  />
+                ) : (
+                  <span>
+                    <FontAwesomeIcon icon={faUserGroup} />
+                  </span>
+                )
               ) : data.avatar ? (
                 <img
                   src={data.avatar}
@@ -100,7 +126,9 @@ export function Chatlist({
                   className="profile-avatar"
                 />
               ) : (
-                <span>{data.name?.charAt(0).toUpperCase()}</span>
+                <span>
+                  {data.name?.charAt(0).toUpperCase()}
+                </span>
               )}
             </div>
 
@@ -109,24 +137,38 @@ export function Chatlist({
 
               {preview ? (
                 <p className="last-message">
-                  {isGroup && senderName ? `${senderName}: ` : ""}
+                  {isGroup && senderName
+                    ? `${senderName}: `
+                    : ""}
                   {getPreviewText(preview)}
                 </p>
               ) : (
                 <p className="last-message new-chat">
-                  {isGroup ? "No messages yet" : "Start a conversation"}
+                  {isGroup
+                    ? "No messages yet"
+                    : "Start a conversation"}
                 </p>
               )}
             </div>
 
-            {preview?.createdAt && (
-              <span className="last-message-time">
-                {preview.createdAt.toDate().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            )}
+            <div className="chat-user-meta">
+              {preview?.createdAt?.toDate && (
+                <span className="last-message-time">
+                  {preview.createdAt
+                    .toDate()
+                    .toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                </span>
+              )}
+
+              {unreadCount > 0 && (
+                <span className="unread-badge">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
           </div>
         );
       })}

@@ -40,6 +40,8 @@ export function Chat() {
   const [groupPreviews, setGroupPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [unreadCounts, setUnreadCounts] = useState({});
+
   const [callId, setCallId] = useState(null);
   const [callState, setCallState] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -169,6 +171,20 @@ export function Chat() {
         });
 
         setPreviews(latestMessages);
+         const counts = {};
+
+        allMessages.forEach((message)=> {
+          if(message.senderId === currentUserId) return;
+
+          if(message.read) return;
+
+          if(message.receiverId !== currentUserId) return;
+     
+
+          counts[message.senderId] = (counts[message.senderId] ||0) + 1;
+        });
+
+        setUnreadCounts(counts);
 
         allMessages.forEach((message) => {
           if (
@@ -694,6 +710,7 @@ const handleSend = async (message, replyTo) => {
           previews={previews}
           groupPreviews={groupPreviews}
           searchTerm={searchTerm}
+          unreadCounts={unreadCounts}
         />
       </div>
 

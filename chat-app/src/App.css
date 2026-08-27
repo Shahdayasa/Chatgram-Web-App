@@ -1116,6 +1116,35 @@ textarea {
   text-decoration: underline;
 }
 
+
+.chat-user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.unread-badge{
+    min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 50%;
+  background-color: #4caf50;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+
+
+
+
 .contact-info-overlay{
   position: absolute;
   inset: 0;
@@ -1311,6 +1340,7 @@ font-size: 14px;
 
 }
 
+
 .message {
   width: fit-content;
   max-width: 65%;
@@ -1341,8 +1371,12 @@ font-size: 14px;
   margin: 0;
 }
 
-
-
+.message-meta{
+  display: flex;
+  flex-direction: row;
+  justify-content: end;
+  gap: 0.3em;
+}
 .message span {
   display: block;
 
@@ -3774,4 +3808,18 @@ right: 0;
   .side-nav {
     width: 300px;
   }
+}
+
+.page-loading {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #707991;
+  font-size: 15px;
+  background-color: #f7f9fc;
 }

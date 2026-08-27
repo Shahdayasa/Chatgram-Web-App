@@ -1,19 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
-
-import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
-import { Chat } from "./pages/Chat";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import { auth } from "./firebase/firebase";
 
 import "./App.css";
 
+const Login = lazy(() =>
+  import("./pages/Login").then((m) => ({ default: m.Login }))
+);
+const Register = lazy(() =>
+  import("./pages/Register").then((m) => ({ default: m.Register }))
+);
+const Chat = lazy(() =>
+  import("./pages/Chat").then((m) => ({ default: m.Chat }))
+);
+
 function App() {
   const [user, setUser] = useState(null);
-  const [isRegister, setIsRegister] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [toast, setToast] = useState({
     show: false,
     message: "",
@@ -23,6 +28,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      setAuthLoading(false);
     });
 
     return () => unsubscribe();
@@ -44,9 +50,12 @@ function App() {
     }, 4000);
   };
 
+  if (authLoading) {
+    return <div className="page-loading">Loading....</div>;
+  }
+
   return (
     <>
-
       {toast.show && (
         <div className={`toast ${toast.type}`}>
           <div className="toast-icon">
@@ -60,23 +69,41 @@ function App() {
         </div>
       )}
 
-      {user ? (
-        <Chat />
-      ) : (
-        <>
-          {!isRegister ? (
-            <Login
-              showToast={showToast}
-              onCreateAccount={() => setIsRegister(true)}
-            />
-          ) : (
-            <Register
-              showToast={showToast}
-              onBackToLogin={() => setIsRegister(false)}
-            />
-          )}
-        </>
-      )}
+      <Suspense fallback={<div className="page-loading">Loading...</div>}>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              user ? (
+                <Navigate to="/chat" replace />
+              ) : (
+                <Login showToast={showToast} />
+              )
+            }
+          />
+
+          <Route
+            path="/register"
+            element={
+              user ? (
+                <Navigate to="/chat" replace />
+              ) : (
+                <Register showToast={showToast} />
+              )
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={user ? <Chat /> : <Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="*"
+            element={<Navigate to={user ? "/chat" : "/login"} replace />}
+          />
+        </Routes>
+      </Suspense>
     </>
   );
 }
