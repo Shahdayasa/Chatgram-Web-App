@@ -691,6 +691,7 @@ const handleSend = async (message, replyTo) => {
           onSend={handleSend}
           onCall={handleCall}
           users={users}
+          onExitGroup={() => setSelectedUser(null)}
         />
       </div>
 

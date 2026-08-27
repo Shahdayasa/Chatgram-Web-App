@@ -393,19 +393,23 @@ const handleCreateGroup = async () => {
     setCreatingGroup(true);
 
     const groupRef = doc(collection(db, "groups"));
+
     const memberIds = [
       currentUser.uid,
       ...selectedMembers.map((m) => m.uid || m.id),
     ];
 
     await setDoc(groupRef, {
+      id: groupRef.id,
       name: trimmedName,
+      avatar: "",
       members: memberIds,
       createdBy: currentUser.uid,
       createdAt: serverTimestamp(),
     });
 
     showToast("Group created successfully!", "success");
+
     closeContactsModal();
   } catch (error) {
     console.error("Error creating group:", error);

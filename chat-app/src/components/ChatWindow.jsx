@@ -33,6 +33,10 @@ import {
   faCheck,
   faPen,
   faImages,
+  faUserGroup,
+  faUserPlus,
+  faRightFromBracket,
+  faArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -285,7 +289,6 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
                   alt="Media"
                   className="contact-info-media-thumb"
                   onClick={() => window.open(m.imageUrl, "_blank")}
-                  style={{ cursor: "pointer" }}
                 />
               ))}
             </div>
@@ -298,7 +301,236 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
   );
 }
 
-export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] }) {
+function GroupInfoPanel({ group, users, onClose, onAddMembers, onRemoveMember, onExitGroup }){
+
+  const currentUser = auth.currentUser;
+  const isAdmin = group.createdBy === currentUser?.uid;
+
+  const [mode,setMode] = useState("info");
+  const [search, setSearch] = useState("");
+  const [selectedNew, setSelectedNew] = useState ([]);
+  const [confirmExit, setConfirmExit] = useState (false);
+
+  const getMemberInfo = (uid) => {
+    if(uid === currentUser?.uid) {
+      return { uid, name: "You", avatar: ""};
+    }
+
+    const found = users.find((u) => u.uid === uid || u.id === uid)
+    return found ? {...found, uid: found.uid || found.id } : { uid, name: "UnKnown", avatar: "" };
+  };
+
+  const members = (group.members || []).map(getMemberInfo);
+
+  const availableContacts = users.filter((u) => {
+    const uid = u.uid || u.id;
+    if((group.members || []).includes(uid)) return false;
+
+    const s = search.toLocaleLowerCase().trim();
+    if(!s) return true;
+
+    return u.name?.toLocaleLowerCase().includes(s) || u.email?.toLocaleLowerCase().includes(s);
+  });
+
+  const toggleNewMember = (contact) => {
+    const uid = contact.uid || contact.id;
+    setSelectedNew((prev) => 
+    prev.some((m) => (m.uid || m.id) === uid)
+    ? prev.filter((m) => (m.uid || m.id) === uid)
+    : [...prev, contact]
+    );
+  };
+const handleAddConfirm = () => {
+  if(selectedNew.length === 0) return;
+  onAddMembers(selectedNew.map((m) => m.uid || m.id));
+  setSelectedNew([]);
+  setSearch("");
+  setMode("info");
+};
+
+if(mode === "addMembers") {
+  return (
+     <div className="contact-info-overlay">
+        <div className="contact-info-header">
+          <button type="button" className="contact-info-close" onClick={() => setMode("info")}>
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          <h3>Add members</h3>
+          <button
+            type="button"
+            className="contact-info-edit"
+            onClick={handleAddConfirm}
+            disabled={selectedNew.length === 0}
+          >
+            <FontAwesomeIcon icon={faCheck} />
+          </button>
+        </div>
+
+        <div className="group-search-wrapper">
+          <div className="contacts-search">
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          {selectedNew.length > 0 && (
+            <div className="selected-members-chips">
+              {selectedNew.map((m) => (
+                <div key={m.uid || m.id} className="selected-member-chip">
+                  <span>{m.name}</span>
+                  <button type="button" onClick={() => toggleNewMember(m)}>
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="contacts-list group-add-list">
+            {availableContacts.length > 0 ? (
+              availableContacts.map((contact) => {
+                const uid = contact.uid || contact.id;
+                const isSelected = selectedNew.some((m) => (m.uid || m.id) === uid);
+
+                return (
+                  <button
+                    key={uid}
+                    type="button"
+                    className="contact-item"
+                    onClick={() => toggleNewMember(contact)}
+                  >
+                    {contact.avatar ? (
+                      <img src={contact.avatar} alt={contact.name} className="contact-avatar" />
+                    ) : (
+                      <div className="contact-avatar-placeholder">
+                        {(contact.name || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    <div className="contact-info">
+                      <strong>{contact.name}</strong>
+                      <span>{contact.email}</span>
+                    </div>
+
+                    <div className={`contact-checkbox ${isSelected ? "checked" : ""}`}>
+                      {isSelected && <FontAwesomeIcon icon={faCheck} />}
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <p className="contact-info-no-media">No users to add</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="contact-info-overlay">
+      <div className="contact-info-header">
+        <button type="button" className="contact-info-close" onClick={onClose}>
+          <FontAwesomeIcon icon={faXmark} />
+        </button>
+        <h3>Group info</h3>
+      </div>
+
+      <div className="contact-info-body">
+        <div className="contact-info-avatar-wrapper">
+          {group.avatar ? (
+            <img src={group.avatar} alt={group.name} className="contact-info-avatar" />
+          ) : (
+            <div className="contact-info-avatar-placeholder">
+              <FontAwesomeIcon icon={faUserGroup} />
+            </div>
+          )}
+        </div>
+
+        <h2 className="contact-info-name">{group.name}</h2>
+        <p className="contact-info-phone">{members.length} members</p>
+
+        <div className="contact-info-section">
+          <div className="contact-info-media-header">
+            <FontAwesomeIcon icon={faUserGroup} />
+            <span>Members</span>
+            <span className="contact-info-media-count">{members.length}</span>
+          </div>
+
+          <button type="button" className="group-add-members-button" onClick={() => setMode("addMembers")}>
+            <FontAwesomeIcon icon={faUserPlus} />
+            Add members
+          </button>
+
+          <div className="group-members-list">
+            {members.map((member) => (
+              <div key={member.uid} className="group-member-row">
+                {member.avatar ? (
+                  <img src={member.avatar} alt={member.name} className="contact-avatar" />
+                ) : (
+                  <div className="contact-avatar-placeholder">
+                    {(member.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
+
+                <div className="contact-info">
+                  <strong>{member.name}</strong>
+                  {member.uid === group.createdBy && <span>Admin</span>}
+                </div>
+
+                {isAdmin && member.uid !== currentUser?.uid && (
+                  <button
+                    type="button"
+                    className="group-remove-member-button"
+                    onClick={() => onRemoveMember(member.uid)}
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button type="button" className="group-exit-button" onClick={() => setConfirmExit(true)}>
+          <FontAwesomeIcon icon={faRightFromBracket} />
+          Exit group
+        </button>
+      </div>
+
+      {confirmExit && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <h3>Exit group?</h3>
+            <p>You will no longer receive messages from this group.</p>
+            <div className="confirm-actions">
+              <button className="cancel-button" onClick={() => setConfirmExit(false)}>
+                Cancel
+              </button>
+              <button className="confirm-logout-button" onClick={onExitGroup}>
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ChatWindow({
+  selectedUser,
+  messages,
+  onSend,
+  onCall,
+  users = [],
+  onExitGroup,
+}) {
   const currentUser = auth.currentUser;
 
   const [showMore, setShowMore] = useState(false);
@@ -343,7 +575,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
     return () => unsubscribe();
   }, []);
 
-  const isBlocked = selectedUser ? blockedUsers.includes(selectedUser.id) : false;
+  const isBlocked = selectedUser && !selectedUser.isGroup ? blockedUsers.includes(selectedUser.id) : false;
 
   const searchMatches = chatSearch.trim()
     ? messages.filter((message) => message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()))
@@ -485,7 +717,11 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
     }
   };
 
-  const displayName = selectedUser ? contactNames[selectedUser.uid] || selectedUser.name : "";
+  const displayName = selectedUser
+    ? selectedUser.isGroup
+      ? selectedUser.name
+      : contactNames[selectedUser.uid] || selectedUser.name
+    : "";
 
   const handleRenameContact = async (newName) => {
     if (!currentUser || !selectedUser || !newName.trim()) return;
@@ -496,6 +732,45 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
       });
     } catch (error) {
       console.error("Error renaming contact:", error);
+    }
+  };
+
+  const handleAddGroupMembers = async (memberIds) => {
+    if (!selectedUser?.isGroup) return;
+
+    try {
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayUnion(...memberIds),
+      });
+    } catch (error) {
+      console.error("Error adding group members:", error);
+    }
+  };
+
+  const handleRemoveGroupMember = async (memberId) => {
+    if (!selectedUser?.isGroup) return;
+
+    try {
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayRemove(memberId),
+      });
+    } catch (error) {
+      console.error("Error removing group member:", error);
+    }
+  };
+
+  const handleExitGroup = async () => {
+    if (!selectedUser?.isGroup || !currentUser) return;
+
+    try {
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayRemove(currentUser.uid),
+      });
+
+      setShowContactInfo(false);
+      onExitGroup?.();
+    } catch (error) {
+      console.error("Error exiting group:", error);
     }
   };
 
@@ -510,6 +785,13 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
     }
 
     return <div className="message-avatar-placeholder">{(name || "U").charAt(0).toUpperCase()}</div>;
+  };
+
+  const getSenderInfo = (senderId) => {
+    if (!selectedUser?.isGroup) return selectedUser || {};
+
+    const found = users.find((u) => u.uid === senderId || u.id === senderId);
+    return found || { name: "Unknown", avatar: "" };
   };
 
   if (!selectedUser) {
@@ -565,14 +847,24 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
             <div className="prof-pic" onClick={() => setShowContactInfo(true)} style={{ cursor: "pointer" }}>
               {selectedUser.avatar ? (
                 <img src={selectedUser.avatar} alt={`${displayName}'s avatar`} className="profile-avatar" />
-              ) : (
+              ) : /* ==== NEW ==== */ selectedUser.isGroup ? (
+                <FontAwesomeIcon icon={faUserGroup} style={{ color: "#ffffff" }} />
+              ) : /* ==== END NEW ==== */ (
                 <span>{displayName?.charAt(0).toUpperCase()}</span>
               )}
             </div>
 
             <div className="name-status">
               <h3>{displayName}</h3>
-              <p>{isBlocked ? "Blocked" : selectedUser.isOnline ? "Online" : getLastSeen(selectedUser.lastSeen)}</p>
+              <p>
+                {selectedUser.isGroup
+                  ? `${selectedUser.members?.length || 0} members`
+                  : isBlocked
+                  ? "Blocked"
+                  : selectedUser.isOnline
+                  ? "Online"
+                  : getLastSeen(selectedUser.lastSeen)}
+              </p>
             </div>
           </div>
 
@@ -581,21 +873,23 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
               <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
 
-            <button className="chat-phone-button" aria-label="Call" type="button" onClick={onCall}>
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M15.772 10.439L16.848 10.095C17.858 9.77299 18.935 10.294 19.368 11.312L20.227 13.34C20.601 14.223 20.394 15.262 19.713 15.908L17.819 17.706C17.935 18.782 18.297 19.841 18.903 20.883C19.4788 21.8912 20.251 22.7736 21.174 23.478L23.449 22.718C24.312 22.431 25.251 22.762 25.779 23.539L27.012 25.349C27.627 26.253 27.517 27.499 26.754 28.265L25.936 29.086C25.122 29.903 23.959 30.2 22.884 29.864C20.345 29.072 18.011 26.721 15.881 22.811C13.748 18.895 12.995 15.571 13.623 12.843C13.887 11.695 14.704 10.78 15.772 10.439Z"
-                  fill="#707991"
-                />
-              </svg>
-            </button>
+            {!selectedUser.isGroup && (
+              <button className="chat-phone-button" aria-label="Call" type="button" onClick={onCall}>
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M15.772 10.439L16.848 10.095C17.858 9.77299 18.935 10.294 19.368 11.312L20.227 13.34C20.601 14.223 20.394 15.262 19.713 15.908L17.819 17.706C17.935 18.782 18.297 19.841 18.903 20.883C19.4788 21.8912 20.251 22.7736 21.174 23.478L23.449 22.718C24.312 22.431 25.251 22.762 25.779 23.539L27.012 25.349C27.627 26.253 27.517 27.499 26.754 28.265L25.936 29.086C25.122 29.903 23.959 30.2 22.884 29.864C20.345 29.072 18.011 26.721 15.881 22.811C13.748 18.895 12.995 15.571 13.623 12.843C13.887 11.695 14.704 10.78 15.772 10.439Z"
+                    fill="#707991"
+                  />
+                </svg>
+              </button>
+            )}
 
             <div className="chat-more-wrapper">
               <button className="chat-more-button" type="button" onClick={() => setShowMore((prev) => !prev)}>
                 <FontAwesomeIcon icon={faEllipsisVertical} />
               </button>
 
-              {showMore && (
+              {showMore && !selectedUser.isGroup && (
                 <div className="chat-more-menu">
                   <button type="button" onClick={handleBlockToggle} disabled={loadingBlock}>
                     {loadingBlock ? "Please wait..." : isBlocked ? "Unblock User" : "Block User"}
@@ -633,6 +927,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
         <div className="messages-content">
           {messages.map((message) => {
             const isMyMessage = message.senderId === currentUser?.uid;
+            const sender = getSenderInfo(message.senderId);
             const isCurrentMatch =
               chatSearch.trim() && searchMatches.length > 0 && searchMatches[currentMatchIndex]?.id === message.id;
 
@@ -646,7 +941,7 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
               >
                 {!isMyMessage && (
                   <div className="message-avatar">
-                    {renderAvatar(selectedUser.avatar, selectedUser.name, selectedUser.name)}
+                    {renderAvatar(sender.avatar, sender.name, sender.name)}
                   </div>
                 )}
 
@@ -665,6 +960,10 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
                     transition: "transform 0.15s ease",
                   }}
                 >
+                  {!isMyMessage && selectedUser.isGroup && (
+                    <span className="message-sender-name">{sender.name}</span>
+                  )}
+
                   {message.replyTo && (
                     <div className="reply-quote">
                       <span>{message.replyTo.senderId === currentUser?.uid ? "You" : displayName}</span>
@@ -678,7 +977,6 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
                       alt="Sent image"
                       className="message-image"
                       onClick={() => window.open(message.imageUrl, "_blank")}
-                      style={{ cursor: "pointer" }}
                     />
                   )}
 
@@ -792,23 +1090,34 @@ export function ChatWindow({ selectedUser, messages, onSend, onCall, users = [] 
         />
       )}
 
-      {showContactInfo && (
-        <ContactInfoPanel
-          user={selectedUser}
-          displayName={displayName}
-          messages={messages}
-          onClose={() => setShowContactInfo(false)}
-          onRename={handleRenameContact}
-          onCall={() => {
-            setShowContactInfo(false);
-            onCall();
-          }}
-          onSearch={() => {
-            setShowContactInfo(false);
-            setShowSearch(true);
-          }}
-        />
-      )}
+      {showContactInfo &&
+        (selectedUser.isGroup ? (
+          <GroupInfoPanel
+            group={selectedUser}
+            users={users}
+            onClose={() => setShowContactInfo(false)}
+            onAddMembers={handleAddGroupMembers}
+            onRemoveMember={handleRemoveGroupMember}
+            onExitGroup={handleExitGroup}
+          />
+        ) : (
+          <ContactInfoPanel
+            user={selectedUser}
+            displayName={displayName}
+            messages={messages}
+            onClose={() => setShowContactInfo(false)}
+            onRename={handleRenameContact}
+            onCall={() => {
+              setShowContactInfo(false);
+              onCall();
+            }}
+            onSearch={() => {
+              setShowContactInfo(false);
+              setShowSearch(true);
+            }}
+          />
+        ))}
+   
 
       {isBlocked ? (
         <div className="blocked-message">
