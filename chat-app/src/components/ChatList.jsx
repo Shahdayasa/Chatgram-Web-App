@@ -1,5 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
+import { auth } from "../firebase/firebase";
 
 export function Chatlist({
   users,
@@ -57,6 +58,13 @@ export function Chatlist({
     chatItems = [...filteredUsers, ...filteredGroups];
   }
 
+  const getPreviewText = (preview) => {
+    if (preview.text?.trim()) return preview.text;
+    if (preview.imageUrl) return "📷 Photo";
+    if (preview.fileUrl) return `📎 ${preview.fileName || "File"}`;
+    return "";
+  };
+
   return (
     <div className="chat-list">
       {chatItems.length === 0 && <p className="no-users">No users found</p>}
@@ -65,9 +73,13 @@ export function Chatlist({
         const { type, id, data, preview } = item;
         const isGroup = type === "group";
 
+        const currentUser = auth.currentUser;
+
         const senderName =
           isGroup && preview?.senderId
-            ? users.find((u) => u.uid === preview.senderId)?.name || "Someone"
+            ? preview.senderId === currentUser?.uid
+              ? "You"
+              : users.find((u) => u.uid === preview.senderId)?.name || "Someone"
             : "";
 
         return (
@@ -98,7 +110,7 @@ export function Chatlist({
               {preview ? (
                 <p className="last-message">
                   {isGroup && senderName ? `${senderName}: ` : ""}
-                  {preview.text}
+                  {getPreviewText(preview)}
                 </p>
               ) : (
                 <p className="last-message new-chat">

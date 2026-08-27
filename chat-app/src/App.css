@@ -1144,7 +1144,7 @@ textarea {
 }
 
 .contact-info-header h3{
-  margin: 0;
+  margin: auto;
   font-size: 17px;
   font-weight: 600;
   color: #011627;
@@ -1466,6 +1466,147 @@ font-size: 14px;
   cursor: pointer;
 }
 
+
+
+.group-search-wrapper {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.group-search-wrapper .contacts-search {
+  width: 100%;
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin: 16px 0 14px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f5f7fa;
+  color: #707991;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.group-search-wrapper .contacts-search:focus-within {
+  background: #ffffff;
+  border-color: #78e378;
+  box-shadow: 0 0 0 3px rgba(120, 227, 120, 0.12);
+}
+
+.group-search-wrapper .contacts-search svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-right: 10px;
+  color: #707991;
+}
+
+.group-search-wrapper .contacts-search input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #011627;
+  font-size: 14px;
+}
+
+.group-search-wrapper .contacts-search input::placeholder {
+  color: #9aa2b1;
+}
+
+.group-add-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 2px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #dce2ec transparent;
+}
+
+.group-add-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.group-add-list::-webkit-scrollbar-thumb {
+  background: #dce2ec;
+  border-radius: 10px;
+}
+
+.group-add-list .contact-item {
+  width: 100%;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.group-add-list .contact-item:hover {
+  background: #f5f8fc;
+}
+
+.group-add-list .contact-item:active {
+  transform: scale(0.985);
+}
+
+.group-add-list .contact-avatar,
+.group-add-list .contact-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #78e378;
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.group-add-list .contact-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 13px;
+}
+
+.group-add-list .contact-info strong {
+  max-width: 100%;
+  color: #011627;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-add-list .contact-info span {
+  max-width: 100%;
+  margin-top: 5px;
+  color: #707991;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 
 .group-add-members-button {

@@ -110,15 +110,18 @@ export function Chat() {
 
             return {
               id: userDoc.id,
+             
+              uid: userData.uid || userDoc.id,
+             
               ...userData,
             };
           })
           .filter(
             (user) =>
               user.id !== auth.currentUser?.uid &&
-              user.name &&
-              user.email &&
-              user.uid,
+              
+              user.name
+              
           );
 
         setUsers(usersData);
@@ -254,6 +257,16 @@ export function Chat() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!selectedUser?.isGroup) return;
+
+    const updatedGroup = groups.find((g) => g.id === selectedUser.id);
+
+    if (updatedGroup && updatedGroup !== selectedUser) {
+      setSelectedUser(updatedGroup);
+    }
+  }, [groups, selectedUser]);
 
   useEffect(() => {
     if (groups.length === 0) {

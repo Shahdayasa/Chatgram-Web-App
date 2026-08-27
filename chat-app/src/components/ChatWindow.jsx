@@ -87,8 +87,14 @@ function ContextMenu({ x, y, onClose, children }) {
       left = x - menuRect.width;
     }
 
-    top = Math.max(padding, Math.min(top, window.innerHeight - menuRect.height - padding));
-    left = Math.max(padding, Math.min(left, window.innerWidth - menuRect.width - padding));
+    top = Math.max(
+      padding,
+      Math.min(top, window.innerHeight - menuRect.height - padding),
+    );
+    left = Math.max(
+      padding,
+      Math.min(left, window.innerWidth - menuRect.width - padding),
+    );
 
     setPosition({ top, left });
   }, [x, y]);
@@ -120,7 +126,9 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
     return user?.name || selectedUser?.name || "User";
   };
 
-  const deliveredDate = message.deliveredAt?.toDate ? message.deliveredAt.toDate() : null;
+  const deliveredDate = message.deliveredAt?.toDate
+    ? message.deliveredAt.toDate()
+    : null;
   const readDate = message.readAt?.toDate ? message.readAt.toDate() : null;
 
   const formatDate = (date) => {
@@ -145,13 +153,28 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
 
       <div className="message-info-slide-content">
         <div className="message-info-message">
-          <div className={isMyMessage ? "message-info-bubble my-info-message" : "message-info-bubble other-info-message"}>
+          <div
+            className={
+              isMyMessage
+                ? "message-info-bubble my-info-message"
+                : "message-info-bubble other-info-message"
+            }
+          >
             {message.imageUrl && (
-              <img src={message.imageUrl} alt="Message" className="message-info-image" />
+              <img
+                src={message.imageUrl}
+                alt="Message"
+                className="message-info-image"
+              />
             )}
 
             {message.fileUrl && (
-              <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file-link">
+              <a
+                href={message.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="message-file-link"
+              >
                 📎 {message.fileName || "Download file"}
               </a>
             )}
@@ -160,7 +183,12 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
 
             <span className="message-info-time">
               {message.createdAt?.toDate
-                ? message.createdAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                ? message.createdAt
+                    .toDate()
+                    .toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
                 : ""}
             </span>
           </div>
@@ -168,18 +196,32 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
 
         <div className="message-info-status">
           <div className="message-info-row">
-            <div className={message.read ? "message-info-icon read-icon" : "message-info-icon delivered-icon"}>
+            <div
+              className={
+                message.read
+                  ? "message-info-icon read-icon"
+                  : "message-info-icon delivered-icon"
+              }
+            >
               <FontAwesomeIcon icon={faCheck} />
               <FontAwesomeIcon icon={faCheck} />
             </div>
             <div className="message-info-text">
               <strong>Read</strong>
-              <span>{message.read ? formatDate(readDate) || "Read" : "Not read"}</span>
+              <span>
+                {message.read ? formatDate(readDate) || "Read" : "Not read"}
+              </span>
             </div>
           </div>
 
           <div className="message-info-row">
-            <div className={message.delivered ? "message-info-icon delivered-icon" : "message-info-icon single-check-icon"}>
+            <div
+              className={
+                message.delivered
+                  ? "message-info-icon delivered-icon"
+                  : "message-info-icon single-check-icon"
+              }
+            >
               {message.delivered ? (
                 <>
                   <FontAwesomeIcon icon={faCheck} />
@@ -191,7 +233,11 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
             </div>
             <div className="message-info-text">
               <strong>Delivered</strong>
-              <span>{message.delivered ? formatDate(deliveredDate) || "Delivered" : "Not delivered"}</span>
+              <span>
+                {message.delivered
+                  ? formatDate(deliveredDate) || "Delivered"
+                  : "Not delivered"}
+              </span>
             </div>
           </div>
         </div>
@@ -205,7 +251,15 @@ function MessageInfoPanel({ message, selectedUser, users, onClose }) {
   );
 }
 
-function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCall, onSearch }) {
+function ContactInfoPanel({
+  user,
+  displayName,
+  messages,
+  onClose,
+  onRename,
+  onCall,
+  onSearch,
+}) {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(displayName || "");
 
@@ -225,7 +279,11 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
           <FontAwesomeIcon icon={faXmark} />
         </button>
         <h3>Contact info</h3>
-        <button type="button" className="contact-info-edit" onClick={() => setEditing((prev) => !prev)}>
+        <button
+          type="button"
+          className="contact-info-edit"
+          onClick={() => setEditing((prev) => !prev)}
+        >
           <FontAwesomeIcon icon={faPen} />
         </button>
       </div>
@@ -233,7 +291,11 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
       <div className="contact-info-body">
         <div className="contact-info-avatar-wrapper">
           {user?.avatar ? (
-            <img src={user.avatar} alt={displayName} className="contact-info-avatar" />
+            <img
+              src={user.avatar}
+              alt={displayName}
+              className="contact-info-avatar"
+            />
           ) : (
             <div className="contact-info-avatar-placeholder">
               {(displayName || "U").charAt(0).toUpperCase()}
@@ -260,24 +322,36 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
         {user?.phone && <p className="contact-info-phone">{user.phone}</p>}
 
         <div className="contact-info-actions">
-          <button type="button" className="contact-info-action" onClick={onCall}>
+          <button
+            type="button"
+            className="contact-info-action"
+            onClick={onCall}
+          >
             <FontAwesomeIcon icon={faPhone} />
           </button>
-          <button type="button" className="contact-info-action" onClick={onSearch}>
+          <button
+            type="button"
+            className="contact-info-action"
+            onClick={onSearch}
+          >
             <FontAwesomeIcon icon={faMagnifyingGlass} />
           </button>
         </div>
 
         <div className="contact-info-section">
           <span className="contact-info-section-label">About</span>
-          <p className="contact-info-about">{user?.about || "Hey there! I am using WhatsApp."}</p>
+          <p className="contact-info-about">
+            {user?.about || "Hey there! I am using WhatsApp."}
+          </p>
         </div>
 
         <div className="contact-info-section">
           <div className="contact-info-media-header">
             <FontAwesomeIcon icon={faImages} />
             <span>Media, links and docs</span>
-            <span className="contact-info-media-count">{mediaMessages.length}</span>
+            <span className="contact-info-media-count">
+              {mediaMessages.length}
+            </span>
           </div>
 
           {mediaMessages.length > 0 ? (
@@ -301,58 +375,73 @@ function ContactInfoPanel({ user, displayName, messages, onClose, onRename, onCa
   );
 }
 
-function GroupInfoPanel({ group, users, onClose, onAddMembers, onRemoveMember, onExitGroup }){
-
+function GroupInfoPanel({
+  group,
+  users,
+  onClose,
+  onAddMembers,
+  onRemoveMember,
+  onExitGroup,
+}) {
   const currentUser = auth.currentUser;
   const isAdmin = group.createdBy === currentUser?.uid;
 
-  const [mode,setMode] = useState("info");
+  const [mode, setMode] = useState("info");
   const [search, setSearch] = useState("");
-  const [selectedNew, setSelectedNew] = useState ([]);
-  const [confirmExit, setConfirmExit] = useState (false);
+  const [selectedNew, setSelectedNew] = useState([]);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const getMemberInfo = (uid) => {
-    if(uid === currentUser?.uid) {
-      return { uid, name: "You", avatar: ""};
+    if (uid === currentUser?.uid) {
+      return { uid, name: "You", avatar: "" };
     }
 
-    const found = users.find((u) => u.uid === uid || u.id === uid)
-    return found ? {...found, uid: found.uid || found.id } : { uid, name: "UnKnown", avatar: "" };
+    const found = users.find((u) => u.uid === uid || u.id === uid);
+    return found
+      ? { ...found, uid: found.uid || found.id }
+      : { uid, name: "UnKnown", avatar: "" };
   };
 
   const members = (group.members || []).map(getMemberInfo);
 
   const availableContacts = users.filter((u) => {
     const uid = u.uid || u.id;
-    if((group.members || []).includes(uid)) return false;
+    if ((group.members || []).includes(uid)) return false;
 
     const s = search.toLocaleLowerCase().trim();
-    if(!s) return true;
+    if (!s) return true;
 
-    return u.name?.toLocaleLowerCase().includes(s) || u.email?.toLocaleLowerCase().includes(s);
+    return (
+      u.name?.toLocaleLowerCase().includes(s) ||
+      u.email?.toLocaleLowerCase().includes(s)
+    );
   });
 
   const toggleNewMember = (contact) => {
     const uid = contact.uid || contact.id;
-    setSelectedNew((prev) => 
-    prev.some((m) => (m.uid || m.id) === uid)
-    ? prev.filter((m) => (m.uid || m.id) === uid)
-    : [...prev, contact]
+    setSelectedNew((prev) =>
+      prev.some((m) => (m.uid || m.id) === uid)
+        ? prev.filter((m) => (m.uid || m.id) === uid)
+        : [...prev, contact],
     );
   };
-const handleAddConfirm = () => {
-  if(selectedNew.length === 0) return;
-  onAddMembers(selectedNew.map((m) => m.uid || m.id));
-  setSelectedNew([]);
-  setSearch("");
-  setMode("info");
-};
+  const handleAddConfirm = () => {
+    if (selectedNew.length === 0) return;
+    onAddMembers(selectedNew.map((m) => m.uid || m.id));
+    setSelectedNew([]);
+    setSearch("");
+    setMode("info");
+  };
 
-if(mode === "addMembers") {
-  return (
-     <div className="contact-info-overlay">
+  if (mode === "addMembers") {
+    return (
+      <div className="contact-info-overlay">
         <div className="contact-info-header">
-          <button type="button" className="contact-info-close" onClick={() => setMode("info")}>
+          <button
+            type="button"
+            className="contact-info-close"
+            onClick={() => setMode("info")}
+          >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
           <h3>Add members</h3>
@@ -395,7 +484,9 @@ if(mode === "addMembers") {
             {availableContacts.length > 0 ? (
               availableContacts.map((contact) => {
                 const uid = contact.uid || contact.id;
-                const isSelected = selectedNew.some((m) => (m.uid || m.id) === uid);
+                const isSelected = selectedNew.some(
+                  (m) => (m.uid || m.id) === uid,
+                );
 
                 return (
                   <button
@@ -405,7 +496,11 @@ if(mode === "addMembers") {
                     onClick={() => toggleNewMember(contact)}
                   >
                     {contact.avatar ? (
-                      <img src={contact.avatar} alt={contact.name} className="contact-avatar" />
+                      <img
+                        src={contact.avatar}
+                        alt={contact.name}
+                        className="contact-avatar"
+                      />
                     ) : (
                       <div className="contact-avatar-placeholder">
                         {(contact.name || "U").charAt(0).toUpperCase()}
@@ -417,7 +512,9 @@ if(mode === "addMembers") {
                       <span>{contact.email}</span>
                     </div>
 
-                    <div className={`contact-checkbox ${isSelected ? "checked" : ""}`}>
+                    <div
+                      className={`contact-checkbox ${isSelected ? "checked" : ""}`}
+                    >
                       {isSelected && <FontAwesomeIcon icon={faCheck} />}
                     </div>
                   </button>
@@ -444,7 +541,11 @@ if(mode === "addMembers") {
       <div className="contact-info-body">
         <div className="contact-info-avatar-wrapper">
           {group.avatar ? (
-            <img src={group.avatar} alt={group.name} className="contact-info-avatar" />
+            <img
+              src={group.avatar}
+              alt={group.name}
+              className="contact-info-avatar"
+            />
           ) : (
             <div className="contact-info-avatar-placeholder">
               <FontAwesomeIcon icon={faUserGroup} />
@@ -462,7 +563,11 @@ if(mode === "addMembers") {
             <span className="contact-info-media-count">{members.length}</span>
           </div>
 
-          <button type="button" className="group-add-members-button" onClick={() => setMode("addMembers")}>
+          <button
+            type="button"
+            className="group-add-members-button"
+            onClick={() => setMode("addMembers")}
+          >
             <FontAwesomeIcon icon={faUserPlus} />
             Add members
           </button>
@@ -471,7 +576,11 @@ if(mode === "addMembers") {
             {members.map((member) => (
               <div key={member.uid} className="group-member-row">
                 {member.avatar ? (
-                  <img src={member.avatar} alt={member.name} className="contact-avatar" />
+                  <img
+                    src={member.avatar}
+                    alt={member.name}
+                    className="contact-avatar"
+                  />
                 ) : (
                   <div className="contact-avatar-placeholder">
                     {(member.name || "U").charAt(0).toUpperCase()}
@@ -497,7 +606,11 @@ if(mode === "addMembers") {
           </div>
         </div>
 
-        <button type="button" className="group-exit-button" onClick={() => setConfirmExit(true)}>
+        <button
+          type="button"
+          className="group-exit-button"
+          onClick={() => setConfirmExit(true)}
+        >
           <FontAwesomeIcon icon={faRightFromBracket} />
           Exit group
         </button>
@@ -509,7 +622,10 @@ if(mode === "addMembers") {
             <h3>Exit group?</h3>
             <p>You will no longer receive messages from this group.</p>
             <div className="confirm-actions">
-              <button className="cancel-button" onClick={() => setConfirmExit(false)}>
+              <button
+                className="cancel-button"
+                onClick={() => setConfirmExit(false)}
+              >
                 Cancel
               </button>
               <button className="confirm-logout-button" onClick={onExitGroup}>
@@ -550,6 +666,20 @@ export function ChatWindow({
 
   const messageRefs = useRef({});
   const messagesEndRef = useRef(null);
+  const moreMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!showMore) return;
+
+    const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setShowMore(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMore]);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -575,10 +705,15 @@ export function ChatWindow({
     return () => unsubscribe();
   }, []);
 
-  const isBlocked = selectedUser && !selectedUser.isGroup ? blockedUsers.includes(selectedUser.id) : false;
+  const isBlocked =
+    selectedUser && !selectedUser.isGroup
+      ? blockedUsers.includes(selectedUser.id)
+      : false;
 
   const searchMatches = chatSearch.trim()
-    ? messages.filter((message) => message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()))
+    ? messages.filter((message) =>
+        message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()),
+      )
     : [];
 
   useEffect(() => {
@@ -604,12 +739,16 @@ export function ChatWindow({
 
   const goToNextMatch = () => {
     if (searchMatches.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev + 1 >= searchMatches.length ? 0 : prev + 1));
+    setCurrentMatchIndex((prev) =>
+      prev + 1 >= searchMatches.length ? 0 : prev + 1,
+    );
   };
 
   const goToPrevMatch = () => {
     if (searchMatches.length === 0) return;
-    setCurrentMatchIndex((prev) => (prev - 1 < 0 ? searchMatches.length - 1 : prev - 1));
+    setCurrentMatchIndex((prev) =>
+      prev - 1 < 0 ? searchMatches.length - 1 : prev - 1,
+    );
   };
 
   const closeSearch = () => {
@@ -627,7 +766,9 @@ export function ChatWindow({
       const userRef = doc(db, "users", currentUser.uid);
 
       if (isBlocked) {
-        await updateDoc(userRef, { blockedUsers: arrayRemove(selectedUser.id) });
+        await updateDoc(userRef, {
+          blockedUsers: arrayRemove(selectedUser.id),
+        });
       } else {
         await updateDoc(userRef, { blockedUsers: arrayUnion(selectedUser.id) });
       }
@@ -663,16 +804,19 @@ export function ChatWindow({
       const sentQuery = query(
         collection(db, "messages"),
         where("senderId", "==", currentUser.uid),
-        where("receiverId", "==", otherUserId)
+        where("receiverId", "==", otherUserId),
       );
 
       const receivedQuery = query(
         collection(db, "messages"),
         where("senderId", "==", otherUserId),
-        where("receiverId", "==", currentUser.uid)
+        where("receiverId", "==", currentUser.uid),
       );
 
-      const [sentSnapshot, receivedSnapshot] = await Promise.all([getDocs(sentQuery), getDocs(receivedQuery)]);
+      const [sentSnapshot, receivedSnapshot] = await Promise.all([
+        getDocs(sentQuery),
+        getDocs(receivedQuery),
+      ]);
 
       const batch = writeBatch(db);
 
@@ -691,7 +835,9 @@ export function ChatWindow({
     if (!selectedMessage) return;
 
     try {
-      await updateDoc(doc(db, "messages", selectedMessage.id), { pinned: !selectedMessage.pinned });
+      await updateDoc(doc(db, "messages", selectedMessage.id), {
+        pinned: !selectedMessage.pinned,
+      });
     } catch (error) {
       console.error("Error toggling pin:", error);
     } finally {
@@ -707,7 +853,9 @@ export function ChatWindow({
 
     try {
       await updateDoc(doc(db, "messages", selectedMessage.id), {
-        starredBy: isStarred ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid),
+        starredBy: isStarred
+          ? arrayRemove(currentUser.uid)
+          : arrayUnion(currentUser.uid),
       });
     } catch (error) {
       console.error("Error toggling star:", error);
@@ -784,7 +932,11 @@ export function ChatWindow({
       return <img src={image} alt={alt} className="message-avatar-image" />;
     }
 
-    return <div className="message-avatar-placeholder">{(name || "U").charAt(0).toUpperCase()}</div>;
+    return (
+      <div className="message-avatar-placeholder">
+        {(name || "U").charAt(0).toUpperCase()}
+      </div>
+    );
   };
 
   const getSenderInfo = (senderId) => {
@@ -824,33 +976,60 @@ export function ChatWindow({
           {chatSearch.trim() && (
             <div className="chat-search-nav">
               <span className="chat-search-count">
-                {searchMatches.length > 0 ? `${currentMatchIndex + 1} of ${searchMatches.length}` : "0 of 0"}
+                {searchMatches.length > 0
+                  ? `${currentMatchIndex + 1} of ${searchMatches.length}`
+                  : "0 of 0"}
               </span>
 
-              <button type="button" onClick={goToPrevMatch} disabled={searchMatches.length === 0}>
+              <button
+                type="button"
+                onClick={goToPrevMatch}
+                disabled={searchMatches.length === 0}
+              >
                 <FontAwesomeIcon icon={faChevronUp} />
               </button>
 
-              <button type="button" onClick={goToNextMatch} disabled={searchMatches.length === 0}>
+              <button
+                type="button"
+                onClick={goToNextMatch}
+                disabled={searchMatches.length === 0}
+              >
                 <FontAwesomeIcon icon={faChevronDown} />
               </button>
             </div>
           )}
 
-          <button className="chat-search-cancle" onClick={closeSearch} type="button">
+          <button
+            className="chat-search-cancle"
+            onClick={closeSearch}
+            type="button"
+          >
             Cancel
           </button>
         </div>
       ) : (
         <div className="chat-header">
           <div className="prof-name-seen">
-            <div className="prof-pic" onClick={() => setShowContactInfo(true)} style={{ cursor: "pointer" }}>
+            <div
+              className="prof-pic"
+              onClick={() => setShowContactInfo(true)}
+              style={{ cursor: "pointer" }}
+            >
               {selectedUser.avatar ? (
-                <img src={selectedUser.avatar} alt={`${displayName}'s avatar`} className="profile-avatar" />
+                <img
+                  src={selectedUser.avatar}
+                  alt={`${displayName}'s avatar`}
+                  className="profile-avatar"
+                />
               ) : /* ==== NEW ==== */ selectedUser.isGroup ? (
-                <FontAwesomeIcon icon={faUserGroup} style={{ color: "#ffffff" }} />
-              ) : /* ==== END NEW ==== */ (
-                <span>{displayName?.charAt(0).toUpperCase()}</span>
+                <FontAwesomeIcon
+                  icon={faUserGroup}
+                  style={{ color: "#ffffff" }}
+                />
+              ) : (
+                /* ==== END NEW ==== */ <span>
+                  {displayName?.charAt(0).toUpperCase()}
+                </span>
               )}
             </div>
 
@@ -860,22 +1039,37 @@ export function ChatWindow({
                 {selectedUser.isGroup
                   ? `${selectedUser.members?.length || 0} members`
                   : isBlocked
-                  ? "Blocked"
-                  : selectedUser.isOnline
-                  ? "Online"
-                  : getLastSeen(selectedUser.lastSeen)}
+                    ? "Blocked"
+                    : selectedUser.isOnline
+                      ? "Online"
+                      : getLastSeen(selectedUser.lastSeen)}
               </p>
             </div>
           </div>
 
           <div className="additional">
-            <button className="chat-search-button" type="button" onClick={() => setShowSearch(true)}>
+            <button
+              className="chat-search-button"
+              type="button"
+              onClick={() => setShowSearch(true)}
+            >
               <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
 
             {!selectedUser.isGroup && (
-              <button className="chat-phone-button" aria-label="Call" type="button" onClick={onCall}>
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <button
+                className="chat-phone-button"
+                aria-label="Call"
+                type="button"
+                onClick={onCall}
+              >
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
                   <path
                     d="M15.772 10.439L16.848 10.095C17.858 9.77299 18.935 10.294 19.368 11.312L20.227 13.34C20.601 14.223 20.394 15.262 19.713 15.908L17.819 17.706C17.935 18.782 18.297 19.841 18.903 20.883C19.4788 21.8912 20.251 22.7736 21.174 23.478L23.449 22.718C24.312 22.431 25.251 22.762 25.779 23.539L27.012 25.349C27.627 26.253 27.517 27.499 26.754 28.265L25.936 29.086C25.122 29.903 23.959 30.2 22.884 29.864C20.345 29.072 18.011 26.721 15.881 22.811C13.748 18.895 12.995 15.571 13.623 12.843C13.887 11.695 14.704 10.78 15.772 10.439Z"
                     fill="#707991"
@@ -884,15 +1078,27 @@ export function ChatWindow({
               </button>
             )}
 
-            <div className="chat-more-wrapper">
-              <button className="chat-more-button" type="button" onClick={() => setShowMore((prev) => !prev)}>
+            <div className="chat-more-wrapper"  ref={moreMenuRef}>
+              <button
+                className="chat-more-button"
+                type="button"
+                onClick={() => setShowMore((prev) => !prev)}
+              >
                 <FontAwesomeIcon icon={faEllipsisVertical} />
               </button>
 
               {showMore && !selectedUser.isGroup && (
                 <div className="chat-more-menu">
-                  <button type="button" onClick={handleBlockToggle} disabled={loadingBlock}>
-                    {loadingBlock ? "Please wait..." : isBlocked ? "Unblock User" : "Block User"}
+                  <button
+                    type="button"
+                    onClick={handleBlockToggle}
+                    disabled={loadingBlock}
+                  >
+                    {loadingBlock
+                      ? "Please wait..."
+                      : isBlocked
+                        ? "Unblock User"
+                        : "Block User"}
                   </button>
                 </div>
               )}
@@ -929,7 +1135,9 @@ export function ChatWindow({
             const isMyMessage = message.senderId === currentUser?.uid;
             const sender = getSenderInfo(message.senderId);
             const isCurrentMatch =
-              chatSearch.trim() && searchMatches.length > 0 && searchMatches[currentMatchIndex]?.id === message.id;
+              chatSearch.trim() &&
+              searchMatches.length > 0 &&
+              searchMatches[currentMatchIndex]?.id === message.id;
 
             return (
               <div
@@ -937,7 +1145,11 @@ export function ChatWindow({
                 ref={(el) => {
                   messageRefs.current[message.id] = el;
                 }}
-                className={isMyMessage ? "message-row my-message-row" : "message-row other-message-row"}
+                className={
+                  isMyMessage
+                    ? "message-row my-message-row"
+                    : "message-row other-message-row"
+                }
               >
                 {!isMyMessage && (
                   <div className="message-avatar">
@@ -952,11 +1164,16 @@ export function ChatWindow({
                     setContextMenu({ x: e.clientX, y: e.clientY });
                   }}
                   className={
-                    (isMyMessage ? "message my-message" : "message other-message") +
+                    (isMyMessage
+                      ? "message my-message"
+                      : "message other-message") +
                     (isCurrentMatch ? " message-highlighted" : "")
                   }
                   style={{
-                    transform: selectedMessage?.id === message.id ? "scale(1.06)" : "scale(1)",
+                    transform:
+                      selectedMessage?.id === message.id
+                        ? "scale(1.06)"
+                        : "scale(1)",
                     transition: "transform 0.15s ease",
                   }}
                 >
@@ -966,7 +1183,11 @@ export function ChatWindow({
 
                   {message.replyTo && (
                     <div className="reply-quote">
-                      <span>{message.replyTo.senderId === currentUser?.uid ? "You" : displayName}</span>
+                      <span>
+                        {message.replyTo.senderId === currentUser?.uid
+                          ? "You"
+                          : displayName}
+                      </span>
                       <p>{message.replyTo.text}</p>
                     </div>
                   )}
@@ -981,7 +1202,12 @@ export function ChatWindow({
                   )}
 
                   {message.fileUrl && (
-                    <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" className="message-file-link">
+                    <a
+                      href={message.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="message-file-link"
+                    >
                       📎 {message.fileName || "Download file"}
                     </a>
                   )}
@@ -990,13 +1216,20 @@ export function ChatWindow({
 
                   <span className="message-meta">
                     {message.starredBy?.includes(currentUser?.uid) && (
-                      <FontAwesomeIcon icon={faStar} className="message-star-icon" />
+                      <FontAwesomeIcon
+                        icon={faStar}
+                        className="message-star-icon"
+                      />
                     )}
 
                     {isMyMessage && (
                       <span
                         className={
-                          message.read ? "message-ticks read" : message.delivered ? "message-ticks delivered" : "message-ticks sent"
+                          message.read
+                            ? "message-ticks read"
+                            : message.delivered
+                              ? "message-ticks delivered"
+                              : "message-ticks sent"
                         }
                       >
                         {message.delivered || message.read ? (
@@ -1011,14 +1244,25 @@ export function ChatWindow({
                     )}
 
                     {message.createdAt?.toDate
-                      ? message.createdAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      ? message.createdAt
+                          .toDate()
+                          .toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                       : ""}
                   </span>
                 </div>
 
                 {isMyMessage && (
                   <div className="message-avatar">
-                    {renderAvatar(avatar, currentUserName || currentUser?.displayName || currentUser?.email, "You")}
+                    {renderAvatar(
+                      avatar,
+                      currentUserName ||
+                        currentUser?.displayName ||
+                        currentUser?.email,
+                      "You",
+                    )}
                   </div>
                 )}
               </div>
@@ -1057,7 +1301,9 @@ export function ChatWindow({
 
           <button type="button" onClick={handleToggleStar}>
             <FontAwesomeIcon icon={faStar} />
-            {selectedMessage.starredBy?.includes(currentUser?.uid) ? "Unstar" : "Star"}
+            {selectedMessage.starredBy?.includes(currentUser?.uid)
+              ? "Unstar"
+              : "Star"}
           </button>
 
           <button
@@ -1071,7 +1317,11 @@ export function ChatWindow({
             Message Info
           </button>
 
-          <button type="button" className="danger" onClick={handleDeleteMessage}>
+          <button
+            type="button"
+            className="danger"
+            onClick={handleDeleteMessage}
+          >
             <FontAwesomeIcon icon={faTrash} />
             Delete
           </button>
@@ -1117,15 +1367,23 @@ export function ChatWindow({
             }}
           />
         ))}
-   
 
       {isBlocked ? (
         <div className="blocked-message">
-          <button type="button" className="delete-chat" onClick={handleDeleteChat}>
+          <button
+            type="button"
+            className="delete-chat"
+            onClick={handleDeleteChat}
+          >
             Delete chat
           </button>
 
-          <button type="button" className="unblock-button" onClick={handleBlockToggle} disabled={loadingBlock}>
+          <button
+            type="button"
+            className="unblock-button"
+            onClick={handleBlockToggle}
+            disabled={loadingBlock}
+          >
             {loadingBlock ? "Please wait..." : "Unblock"}
           </button>
         </div>
@@ -1135,12 +1393,19 @@ export function ChatWindow({
             <div className="reply-preview">
               <div className="reply-preview-content">
                 <span className="reply-preview-label">
-                  Replying to {replyingTo.senderId === currentUser?.uid ? "yourself" : displayName}
+                  Replying to{" "}
+                  {replyingTo.senderId === currentUser?.uid
+                    ? "yourself"
+                    : displayName}
                 </span>
                 <p>{replyingTo.text}</p>
               </div>
 
-              <button type="button" className="reply-preview-close" onClick={() => setReplyingTo(null)}>
+              <button
+                type="button"
+                className="reply-preview-close"
+                onClick={() => setReplyingTo(null)}
+              >
                 ×
               </button>
             </div>
