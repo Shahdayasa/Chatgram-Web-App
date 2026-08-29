@@ -8,6 +8,7 @@ import {
   collection,
   getDocs,
   serverTimestamp,
+    addDoc,
 } from "firebase/firestore";
 
 import { auth, db } from "../firebase/firebase";
@@ -450,6 +451,28 @@ const handleCreateGroup = async () => {
       createdAt: serverTimestamp(),
     });
 
+
+        await setDoc(groupRef, {
+      name: trimmedName,
+      avatar: groupAvatarUrl,
+      members: memberIds,
+      createdBy: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    const creatorName = userName || currentUser.displayName || "Someone";
+
+    await addDoc(collection(db, "messages"), {
+      type: "system",
+      text: `${creatorName} created the group "${trimmedName}"`,
+      groupId: groupRef.id,
+      isGroup: true,
+      senderId: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+
+    showToast("Group created successfully!", "success");
+    closeContactsModal();
     showToast("Group created successfully!", "success");
     closeContactsModal();
   } catch (error) {

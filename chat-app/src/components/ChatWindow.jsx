@@ -14,6 +14,8 @@ import {
   where,
   getDocs,
   writeBatch,
+    addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -38,6 +40,8 @@ import {
   faRightFromBracket,
   faArrowLeft,
   faCamera,
+  faCommentDots,
+
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -1175,17 +1179,42 @@ export function ChatWindow({
   };
 
   const handleAddGroupMembers = async (memberIds) => {
-    if (!selectedUser?.isGroup) return;
+    if (!selectedUser?.isGroup || !currentUser) return;
 
     try {
       await updateDoc(doc(db, "groups", selectedUser.id), {
         members: arrayUnion(...memberIds),
       });
+
+      const adderName =
+        currentUserName || currentUser.displayName || "Someone";
+
+      const addedNames = memberIds.map((id) => {
+        const found = users.find((u) => u.uid === id || u.id === id);
+        return found?.name || "someone";
+      });
+
+      const addedText =
+        addedNames.length === 1
+          ? addedNames[0]
+          : addedNames.length === 2
+            ? `${addedNames[0]} and ${addedNames[1]}`
+            : `${addedNames.slice(0, -1).join(", ")}, and ${
+                addedNames[addedNames.length - 1]
+              }`;
+
+      await addDoc(collection(db, "messages"), {
+        type: "system",
+        text: `${adderName} added ${addedText}`,
+        groupId: selectedUser.id,
+        isGroup: true,
+        senderId: currentUser.uid,
+        createdAt: serverTimestamp(),
+      });
     } catch (error) {
       console.error("Error adding group members:", error);
     }
   };
-
   const handleRemoveGroupMember = async (memberId) => {
     if (!selectedUser?.isGroup) return;
 
@@ -1263,19 +1292,20 @@ export function ChatWindow({
     );
   };
 
-  if (!selectedUser) {
-    return (
-      <div className="chat-window empty-chat">
-        <div className="start-conversation">
-          <div className="start-icon">💬</div>
-
-          <h2>Start a new conversation</h2>
-
-          <p>Select a user from the chat list to start chatting.</p>
+if (!selectedUser) {
+  return (
+    <div className="chat-window empty-chat">
+      <div className="start-conversation">
+        <div className="start-icon">
+          <FontAwesomeIcon icon={faCommentDots} />
         </div>
+
+        <h2>Start a new conversation</h2>
+        <p>Select a user from the chat list to start chatting.</p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="chat-window">
@@ -1470,6 +1500,14 @@ export function ChatWindow({
           )}
 
           {messages.map((message) => {
+
+              if (message.type === "system") {
+              return (
+                <div key={message.id} className="system-message">
+                  <span>{message.text}</span>
+                </div>
+              );
+            }
             const isMyMessage = message.senderId === currentUser?.uid;
 
             const sender = getSenderInfo(message.senderId);
