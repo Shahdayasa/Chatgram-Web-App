@@ -10,12 +10,16 @@ import {
   doc,
   setDoc,
   updateDoc,
+  limitToLast,
+  endBefore,
+  getDocs,
 } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 import { Navbar } from "../components/Navbar";
 import { ChatWindow } from "../components/ChatWindow";
 import { Chatlist } from "../components/ChatList";
-import { auth, db } from "../firebase/firebase";
+import { auth, db, getUsersFromAPI } from "../firebase/firebase";
 import CallModal from "../components/CallModal";
 import IncomingCall from "../components/IncomingCall";
 
@@ -32,9 +36,17 @@ import {
 } from "../services/webrtc";
 
 export function Chat() {
+ 
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
+  const oldestMessageRef = useRef(null);
   const [previews, setPreviews] = useState({});
   const [groups, setGroups] = useState([]);
   const [groupPreviews, setGroupPreviews] = useState({});
@@ -53,6 +65,15 @@ export function Chat() {
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const callIdRef = useRef(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUserId(user ? user.uid : null);
+      setAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!remoteStream) {
@@ -102,100 +123,109 @@ export function Chat() {
     };
   }, [remoteStream]);
 
+ useEffect(() => {
+  if (!authReady || !currentUserId) return;
+
+  const loadUsers = async () => {
+    try {
+      const usersData = await getUsersFromAPI();
+
+      const filteredUsers = usersData.filter(
+        (user) =>
+          user.uid !== currentUserId &&
+          user.name
+      );
+
+      setUsers(filteredUsers);
+    } catch (error) {
+      console.error("Error getting users from API:", error);
+    }
+  };
+
+  loadUsers();
+}, [authReady, currentUserId]);
+
+  // Messages for the currently selected 1-1 chat
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "users"),
-      (snapshot) => {
-        const usersData = snapshot.docs
-          .map((userDoc) => {
-            const userData = userDoc.data();
+    if (!authReady || !currentUserId) return;
 
-            return {
-              id: userDoc.id,
-             
-              uid: userData.uid || userDoc.id,
-             
-              ...userData,
-            };
-          })
-          .filter(
-            (user) =>
-              user.id !== auth.currentUser?.uid &&
-              
-              user.name
-              
-          );
+    if (!selectedUser || selectedUser.isGroup) return;
 
-        setUsers(usersData);
-      },
-      (error) => {
-        console.error("Error getting users:", error);
-      },
-    );
+    const otherUserId = selectedUser.uid;
 
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const currentUserId = auth.currentUser.uid;
+    setMessages([]);
+    setLoadingOlder(false);
+    setHasMoreMessages(true);
+    oldestMessageRef.current = null;
 
     const messageQuery = query(
       collection(db, "messages"),
       where("participants", "array-contains", currentUserId),
       orderBy("createdAt", "asc"),
+      limitToLast(10),
     );
 
     const unsubscribe = onSnapshot(
       messageQuery,
       (snapshot) => {
-        const allMessages = snapshot.docs.map(
+        const latestMessages = snapshot.docs.map(
           (messageDoc) => ({
             id: messageDoc.id,
             ...messageDoc.data(),
           }),
         );
 
-        const latestMessages = {};
+        if (snapshot.docs.length > 0) {
+          oldestMessageRef.current =
+            snapshot.docs[0];
+        }
 
-        allMessages.forEach((message) => {
-          const otherUserId =
-            message.senderId === currentUserId
-              ? message.receiverId
-              : message.senderId;
+        if (snapshot.docs.length < 10) {
+          setHasMoreMessages(false);
+        }
 
-          if (otherUserId) {
-            latestMessages[otherUserId] = message;
-          }
-        });
+        const selectedMessages =
+          latestMessages.filter(
+            (message) =>
+              (message.senderId === currentUserId &&
+                message.receiverId === otherUserId) ||
+              (message.senderId === otherUserId &&
+                message.receiverId === currentUserId),
+          );
 
-        setPreviews(latestMessages);
-         const counts = {};
+        setMessages(selectedMessages);
 
-        allMessages.forEach((message)=> {
-          if(message.senderId === currentUserId) return;
-
-          if(message.read) return;
-
-          if(message.receiverId !== currentUserId) return;
-     
-
-          counts[message.senderId] = (counts[message.senderId] ||0) + 1;
-        });
-
-        setUnreadCounts(counts);
-
-        allMessages.forEach((message) => {
+        selectedMessages.forEach((message) => {
           if (
             message.receiverId === currentUserId &&
-            message.senderId !== currentUserId &&
+            message.senderId === otherUserId &&
+            !message.read
+          ) {
+            updateDoc(
+              doc(db, "messages", message.id),
+              {
+                read: true,
+                readAt: serverTimestamp(),
+              },
+            ).catch((error) => {
+              console.error(
+                "Error marking message read:",
+                error,
+              );
+            });
+          }
+
+          if (
+            message.receiverId === currentUserId &&
             !message.delivered
           ) {
-            updateDoc(doc(db, "messages", message.id), {
-              delivered: true,
-              deliveredAt: serverTimestamp(),
-            }).catch((error) => {
+            updateDoc(
+              doc(db, "messages", message.id),
+              {
+                delivered: true,
+                deliveredAt: serverTimestamp(),
+              },
+            ).catch((error) => {
               console.error(
                 "Error marking message delivered:",
                 error,
@@ -203,55 +233,71 @@ export function Chat() {
             });
           }
         });
-
-        if (selectedUser && !selectedUser.isGroup) {
-          allMessages.forEach((message) => {
-            if (
-              message.senderId === selectedUser.uid &&
-              message.receiverId === currentUserId &&
-              !message.read
-            ) {
-              updateDoc(doc(db, "messages", message.id), {
-                read: true,
-                readAt: serverTimestamp(),
-              }).catch((error) => {
-                console.error(
-                  "Error marking message read:",
-                  error,
-                );
-              });
-            }
-          });
-
-          const selectedMessages = allMessages.filter(
-            (message) =>
-              (message.senderId === currentUserId &&
-                message.receiverId === selectedUser.uid) ||
-              (message.senderId === selectedUser.uid &&
-                message.receiverId === currentUserId),
-          );
-
-          setMessages(selectedMessages);
-        } else if (!selectedUser) {
-          setMessages([]);
-        }
       },
       (error) => {
-        console.error("Error getting messages:", error);
+        console.error(
+          "Error getting messages:",
+          error,
+        );
       },
     );
 
     return () => unsubscribe();
-  }, [selectedUser]);
+  }, [authReady, currentUserId, selectedUser]);
+
+  // Previews for all 1-1 chats — independent of which chat is selected.
+  // This is what feeds the Chatlist sidebar for direct messages, and it
+  // must not depend on selectedUser or it will only ever show a preview
+  // for whichever chat happens to be open.
+  useEffect(() => {
+    if (!authReady || !currentUserId) return;
+
+    const previewQuery = query(
+      collection(db, "messages"),
+      where("participants", "array-contains", currentUserId),
+      orderBy("createdAt", "asc"),
+    );
+
+    const unsubscribe = onSnapshot(
+      previewQuery,
+      (snapshot) => {
+        const latest = {};
+
+        snapshot.docs.forEach((messageDoc) => {
+          const data = messageDoc.data();
+
+          const otherId =
+            data.senderId === currentUserId
+              ? data.receiverId
+              : data.senderId;
+
+          if (otherId) {
+            latest[otherId] = {
+              id: messageDoc.id,
+              ...data,
+            };
+          }
+        });
+
+        setPreviews(latest);
+      },
+      (error) => {
+        console.error(
+          "Error getting message previews:",
+          error,
+        );
+      },
+    );
+
+    return () => unsubscribe();
+  }, [authReady, currentUserId]);
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) return;
+    if (!authReady || !currentUserId) return;
 
     const groupsQuery = query(
       collection(db, "groups"),
-      where("members", "array-contains", currentUser.uid),
+      where("members", "array-contains", currentUserId),
     );
 
     const unsubscribe = onSnapshot(
@@ -272,7 +318,7 @@ export function Chat() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [authReady, currentUserId]);
 
   useEffect(() => {
     if (!selectedUser?.isGroup) return;
@@ -322,13 +368,20 @@ export function Chat() {
     return () => unsubscribe();
   }, [groups]);
 
+  // Messages for the currently selected group chat
   useEffect(() => {
     if (!selectedUser?.isGroup) return;
+
+    setMessages([]);
+    setLoadingOlder(false);
+    setHasMoreMessages(true);
+    oldestMessageRef.current = null;
 
     const groupMessagesQuery = query(
       collection(db, "messages"),
       where("groupId", "==", selectedUser.id),
       orderBy("createdAt", "asc"),
+      limitToLast(10),
     );
 
     const unsubscribe = onSnapshot(
@@ -340,6 +393,15 @@ export function Chat() {
             ...messageDoc.data(),
           }),
         );
+
+        if (snapshot.docs.length > 0) {
+          oldestMessageRef.current =
+            snapshot.docs[0];
+        }
+
+        if (snapshot.docs.length < 10) {
+          setHasMoreMessages(false);
+        }
 
         setMessages(groupMessages);
       },
@@ -353,112 +415,204 @@ export function Chat() {
 
     return () => unsubscribe();
   }, [selectedUser]);
-const handleSend = async (message, replyTo) => {
-  if (!selectedUser || !auth.currentUser) {
-    return;
-  }
 
-  const isAttachment =
-    typeof message === "object" && message !== null;
-
-  const text = isAttachment
-    ? message.text || ""
-    : message;
-
-  const imageUrl = isAttachment
-    ? message.imageUrl || null
-    : null;
-
-  const fileUrl = isAttachment
-    ? message.fileUrl || null
-    : null;
-
-  const fileName = isAttachment
-    ? message.fileName || null
-    : null;
-
-  const fileType = isAttachment
-    ? message.fileType || null
-    : null;
-
-  const fileSize = isAttachment
-    ? message.fileSize || null
-    : null;
-
-  if (
-    !text?.trim() &&
-    !imageUrl &&
-    !fileUrl
-  ) {
-    return;
-  }
-
-  const replyToData = replyTo
-    ? {
-        id: replyTo.id,
-        text: replyTo.text || "",
-        senderId: replyTo.senderId,
-      }
-    : null;
-
-  try {
-    if (selectedUser.isGroup) {
-      await addDoc(collection(db, "messages"), {
-        text: text?.trim() || "",
-
-        imageUrl,
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize,
-
-        senderId: auth.currentUser.uid,
-        groupId: selectedUser.id,
-        isGroup: true,
-
-        createdAt: serverTimestamp(),
-
-        replyTo: replyToData,
-      });
-    } else {
-      await addDoc(collection(db, "messages"), {
-        text: text?.trim() || "",
-
-        imageUrl,
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize,
-
-        senderId: auth.currentUser.uid,
-        receiverId: selectedUser.uid,
-
-        participants: [
-          auth.currentUser.uid,
-          selectedUser.uid,
-        ],
-
-        createdAt: serverTimestamp(),
-
-        delivered: false,
-        read: false,
-
-        replyTo: replyToData,
-      });
+  const loadOlderMessages = async () => {
+    if (
+      loadingOlder ||
+      !hasMoreMessages ||
+      !selectedUser ||
+      !oldestMessageRef.current ||
+      !currentUserId
+    ) {
+      return;
     }
-  } catch (error) {
-    console.error(
-      "Error sending message:",
-      error,
-    );
-  }
-};
+
+    try {
+      setLoadingOlder(true);
+
+      let olderQuery;
+
+      if (selectedUser.isGroup) {
+        olderQuery = query(
+          collection(db, "messages"),
+          where("groupId", "==", selectedUser.id),
+          orderBy("createdAt", "asc"),
+          endBefore(oldestMessageRef.current),
+          limitToLast(10),
+        );
+      } else {
+        olderQuery = query(
+          collection(db, "messages"),
+          where(
+            "participants",
+            "array-contains",
+            currentUserId,
+          ),
+          orderBy("createdAt", "asc"),
+          endBefore(oldestMessageRef.current),
+          limitToLast(10),
+        );
+      }
+
+      const snapshot = await getDocs(olderQuery);
+
+      if (snapshot.empty) {
+        setHasMoreMessages(false);
+        return;
+      }
+
+      const olderMessages = snapshot.docs.map(
+        (messageDoc) => ({
+          id: messageDoc.id,
+          ...messageDoc.data(),
+        }),
+      );
+
+      oldestMessageRef.current =
+        snapshot.docs[0];
+
+      if (snapshot.docs.length < 10) {
+        setHasMoreMessages(false);
+      }
+
+      if (selectedUser.isGroup) {
+        setMessages((prev) => [
+          ...olderMessages,
+          ...prev,
+        ]);
+      } else {
+        const filteredOlderMessages =
+          olderMessages.filter(
+            (message) =>
+              (message.senderId === currentUserId &&
+                message.receiverId ===
+                  selectedUser.uid) ||
+              (message.senderId ===
+                selectedUser.uid &&
+                message.receiverId ===
+                  currentUserId),
+          );
+
+        setMessages((prev) => [
+          ...filteredOlderMessages,
+          ...prev,
+        ]);
+      }
+    } catch (error) {
+      console.error(
+        "Error loading older messages:",
+        error,
+      );
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  const handleSend = async (message, replyTo) => {
+    if (!selectedUser || !currentUserId) {
+      return;
+    }
+
+    const isAttachment =
+      typeof message === "object" && message !== null;
+
+    const text = isAttachment
+      ? message.text || ""
+      : message;
+
+    const imageUrl = isAttachment
+      ? message.imageUrl || null
+      : null;
+
+    const fileUrl = isAttachment
+      ? message.fileUrl || null
+      : null;
+
+    const fileName = isAttachment
+      ? message.fileName || null
+      : null;
+
+    const fileType = isAttachment
+      ? message.fileType || null
+      : null;
+
+    const fileSize = isAttachment
+      ? message.fileSize || null
+      : null;
+
+    if (
+      !text?.trim() &&
+      !imageUrl &&
+      !fileUrl
+    ) {
+      return;
+    }
+
+    const replyToData = replyTo
+      ? {
+          id: replyTo.id,
+          text: replyTo.text || "",
+          senderId: replyTo.senderId,
+        }
+      : null;
+
+    try {
+      if (selectedUser.isGroup) {
+        await addDoc(collection(db, "messages"), {
+          text: text?.trim() || "",
+
+          imageUrl,
+          fileUrl,
+          fileName,
+          fileType,
+          fileSize,
+
+          senderId: currentUserId,
+          groupId: selectedUser.id,
+          isGroup: true,
+
+          createdAt: serverTimestamp(),
+
+          replyTo: replyToData,
+        });
+      } else {
+        await addDoc(collection(db, "messages"), {
+          text: text?.trim() || "",
+
+          imageUrl,
+          fileUrl,
+          fileName,
+          fileType,
+          fileSize,
+
+          senderId: currentUserId,
+          receiverId: selectedUser.uid,
+
+          participants: [
+            currentUserId,
+            selectedUser.uid,
+          ],
+
+          createdAt: serverTimestamp(),
+
+          delivered: false,
+          read: false,
+
+          replyTo: replyToData,
+        });
+      }
+    } catch (error) {
+      console.error(
+        "Error sending message:",
+        error,
+      );
+    }
+  };
+
   useEffect(() => {
-    const currentUser = auth.currentUser;
+    if (!authReady || !currentUserId) return;
 
-    if (!currentUser) return;
-
-    const userRef = doc(db, "users", currentUser.uid);
+    const userRef = doc(db, "users", currentUserId);
 
     setDoc(
       userRef,
@@ -489,16 +643,14 @@ const handleSend = async (message, replyTo) => {
         );
       });
     };
-  }, []);
+  }, [authReady, currentUserId]);
 
   useEffect(() => {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) return;
+    if (!authReady || !currentUserId) return;
 
     const callsQuery = query(
       collection(db, "calls"),
-      where("receiverId", "==", currentUser.uid),
+      where("receiverId", "==", currentUserId),
       where("status", "==", "calling"),
     );
 
@@ -533,10 +685,10 @@ const handleSend = async (message, replyTo) => {
     );
 
     return () => unsubscribe();
-  }, [users]);
+  }, [authReady, currentUserId, users]);
 
   const handleCall = async () => {
-    if (!selectedUser || !auth.currentUser || callState) {
+    if (!selectedUser || !currentUserId || callState) {
       return;
     }
 
@@ -552,7 +704,7 @@ const handleSend = async (message, replyTo) => {
 
       const pc = await createCall(
         newCallId,
-        auth.currentUser.uid,
+        currentUserId,
         selectedUser.uid,
         stream,
         (remoteAudioStream) => {
@@ -722,6 +874,9 @@ const handleSend = async (message, replyTo) => {
           onCall={handleCall}
           users={users}
           onExitGroup={() => setSelectedUser(null)}
+          onLoadOlder={loadOlderMessages}
+          loadingOlder={loadingOlder}
+          hasMoreMessages={hasMoreMessages}
         />
       </div>
 

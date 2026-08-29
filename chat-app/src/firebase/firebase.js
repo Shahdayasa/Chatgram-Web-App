@@ -16,3 +16,46 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+export async function getUsersFromAPI() {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("User is not logged in");
+  }
+
+  const token = await user.getIdToken();
+
+  const response = await fetch(
+    "https://firestore.googleapis.com/v1/projects/chat-app-30eab/databases/(default)/documents/users",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch users");
+  }
+
+  const data = await response.json();
+
+  return (data.documents || []).map((document) => {
+    const fields = document.fields || {};
+
+    return {
+    
+  id: document.name.split("/").pop(),
+  uid: fields.uid?.stringValue || "",
+  name: fields.name?.stringValue || "",
+  email: fields.email?.stringValue || "",
+  phone: fields.phone?.stringValue || "",
+  description: fields.description?.stringValue || "",
+  avatar: fields.avatar?.stringValue || "",
+  isOnline: fields.isOnline?.booleanValue || false,
+  lastSeen: fields.lastSeen?.timestampValue || null,
+
+    };
+  });
+}

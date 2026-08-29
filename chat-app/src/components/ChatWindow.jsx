@@ -103,18 +103,12 @@ function ContextMenu({ x, y, onClose, children }) {
 
     top = Math.max(
       padding,
-      Math.min(
-        top,
-        window.innerHeight - menuRect.height - padding,
-      ),
+      Math.min(top, window.innerHeight - menuRect.height - padding),
     );
 
     left = Math.max(
       padding,
-      Math.min(
-        left,
-        window.innerWidth - menuRect.width - padding,
-      ),
+      Math.min(left, window.innerWidth - menuRect.width - padding),
     );
 
     setPosition({ top, left });
@@ -122,10 +116,7 @@ function ContextMenu({ x, y, onClose, children }) {
 
   return (
     <>
-      <div
-        className="message-context-overlay"
-        onClick={onClose}
-      />
+      <div className="message-context-overlay" onClick={onClose} />
 
       <div
         ref={menuRef}
@@ -142,42 +133,28 @@ function ContextMenu({ x, y, onClose, children }) {
   );
 }
 
-function MessageInfoPanel({
-  message,
-  selectedUser,
-  users,
-  onClose,
-}) {
+function MessageInfoPanel({ message, selectedUser, users, onClose }) {
   if (!message) return null;
 
   const currentUser = auth.currentUser;
 
-  const isMyMessage =
-    message.senderId === currentUser?.uid;
+  const isMyMessage = message.senderId === currentUser?.uid;
 
   const getUserName = (uid) => {
     if (uid === currentUser?.uid) {
       return "You";
     }
 
-    const user = users?.find(
-      (u) => u.uid === uid || u.id === uid,
-    );
+    const user = users?.find((u) => u.uid === uid || u.id === uid);
 
-    return (
-      user?.name ||
-      selectedUser?.name ||
-      "User"
-    );
+    return user?.name || selectedUser?.name || "User";
   };
 
   const deliveredDate = message.deliveredAt?.toDate
     ? message.deliveredAt.toDate()
     : null;
 
-  const readDate = message.readAt?.toDate
-    ? message.readAt.toDate()
-    : null;
+  const readDate = message.readAt?.toDate ? message.readAt.toDate() : null;
 
   const formatDate = (date) => {
     if (!date) return "";
@@ -229,18 +206,14 @@ function MessageInfoPanel({
               </a>
             )}
 
-            {message.text && (
-              <p>{message.text}</p>
-            )}
+            {message.text && <p>{message.text}</p>}
 
             <span className="message-info-time">
               {message.createdAt?.toDate
-                ? message.createdAt
-                    .toDate()
-                    .toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                ? message.createdAt.toDate().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                 : ""}
             </span>
           </div>
@@ -255,7 +228,6 @@ function MessageInfoPanel({
                   : "message-info-icon delivered-icon"
               }
             >
-              
               <FontAwesomeIcon className="first-check" icon={faCheck} />
               <FontAwesomeIcon icon={faCheck} />
             </div>
@@ -264,9 +236,7 @@ function MessageInfoPanel({
               <strong>Read</strong>
 
               <span>
-                {message.read
-                  ? formatDate(readDate) || "Read"
-                  : "Not read"}
+                {message.read ? formatDate(readDate) || "Read" : "Not read"}
               </span>
             </div>
           </div>
@@ -294,8 +264,7 @@ function MessageInfoPanel({
 
               <span>
                 {message.delivered
-                  ? formatDate(deliveredDate) ||
-                    "Delivered"
+                  ? formatDate(deliveredDate) || "Delivered"
                   : "Not delivered"}
               </span>
             </div>
@@ -305,9 +274,7 @@ function MessageInfoPanel({
         <div className="message-info-sender">
           <span>Sent by</span>
 
-          <strong>
-            {getUserName(message.senderId)}
-          </strong>
+          <strong>{getUserName(message.senderId)}</strong>
         </div>
       </div>
     </div>
@@ -325,13 +292,9 @@ function ContactInfoPanel({
 }) {
   const [editing, setEditing] = useState(false);
 
-  const [nameInput, setNameInput] = useState(
-    displayName || "",
-  );
+  const [nameInput, setNameInput] = useState(displayName || "");
 
-  const mediaMessages = messages.filter(
-    (m) => m.imageUrl,
-  );
+  const mediaMessages = messages.filter((m) => m.imageUrl);
 
   const handleSave = () => {
     if (nameInput.trim()) {
@@ -344,11 +307,7 @@ function ContactInfoPanel({
   return (
     <div className="contact-info-overlay">
       <div className="contact-info-header">
-        <button
-          type="button"
-          className="contact-info-close"
-          onClick={onClose}
-        >
+        <button type="button" className="contact-info-close" onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
 
@@ -357,9 +316,7 @@ function ContactInfoPanel({
         <button
           type="button"
           className="contact-info-edit"
-          onClick={() =>
-            setEditing((prev) => !prev)
-          }
+          onClick={() => setEditing((prev) => !prev)}
         >
           <FontAwesomeIcon icon={faPen} />
         </button>
@@ -375,9 +332,7 @@ function ContactInfoPanel({
             />
           ) : (
             <div className="contact-info-avatar-placeholder">
-              {(displayName || "U")
-                .charAt(0)
-                .toUpperCase()}
+              {(displayName || "U").charAt(0).toUpperCase()}
             </div>
           )}
         </div>
@@ -387,30 +342,19 @@ function ContactInfoPanel({
             <input
               type="text"
               value={nameInput}
-              onChange={(e) =>
-                setNameInput(e.target.value)
-              }
+              onChange={(e) => setNameInput(e.target.value)}
               autoFocus
             />
 
-            <button
-              type="button"
-              onClick={handleSave}
-            >
+            <button type="button" onClick={handleSave}>
               <FontAwesomeIcon icon={faCheck} />
             </button>
           </div>
         ) : (
-          <h2 className="contact-info-name">
-            {displayName}
-          </h2>
+          <h2 className="contact-info-name">{displayName}</h2>
         )}
 
-        {user?.phone && (
-          <p className="contact-info-phone">
-            {user.phone}
-          </p>
-        )}
+        {user?.phone && <p className="contact-info-phone">{user.phone}</p>}
 
         <div className="contact-info-actions">
           <button
@@ -426,20 +370,15 @@ function ContactInfoPanel({
             className="contact-info-action"
             onClick={onSearch}
           >
-            <FontAwesomeIcon
-              icon={faMagnifyingGlass}
-            />
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
           </button>
         </div>
 
         <div className="contact-info-section">
-          <span className="contact-info-section-label">
-            About
-          </span>
+          <span className="contact-info-section-label">About</span>
 
           <p className="contact-info-about">
-            {user?.about ||
-              "Hey there! I am using WhatsApp."}
+            {user?.about || "Hey there! I am using WhatsApp."}
           </p>
         </div>
 
@@ -462,19 +401,12 @@ function ContactInfoPanel({
                   src={m.imageUrl}
                   alt="Media"
                   className="contact-info-media-thumb"
-                  onClick={() =>
-                    window.open(
-                      m.imageUrl,
-                      "_blank",
-                    )
-                  }
+                  onClick={() => window.open(m.imageUrl, "_blank")}
                 />
               ))}
             </div>
           ) : (
-            <p className="contact-info-no-media">
-              No media shared yet
-            </p>
+            <p className="contact-info-no-media">No media shared yet</p>
           )}
         </div>
       </div>
@@ -493,17 +425,13 @@ function GroupInfoPanel({
 }) {
   const currentUser = auth.currentUser;
 
-  const isAdmin =
-    group.createdBy === currentUser?.uid;
+  const isAdmin = group.createdBy === currentUser?.uid;
 
   const [mode, setMode] = useState("info");
   const [search, setSearch] = useState("");
-  const [selectedNew, setSelectedNew] =
-    useState([]);
-  const [confirmExit, setConfirmExit] =
-    useState(false);
-  const [uploadingAvatar, setUploadingAvatar] =
-    useState(false);
+  const [selectedNew, setSelectedNew] = useState([]);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const avatarInputRef = useRef(null);
 
@@ -534,10 +462,7 @@ function GroupInfoPanel({
       const formData = new FormData();
 
       formData.append("file", file);
-      formData.append(
-        "upload_preset",
-        "chat_avatars",
-      );
+      formData.append("upload_preset", "chat_avatars");
 
       const response = await fetch(
         "https://api.cloudinary.com/v1_1/zhycdkaz/image/upload",
@@ -550,18 +475,12 @@ function GroupInfoPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error?.message ||
-            "Cloudinary upload failed",
-        );
+        throw new Error(data.error?.message || "Cloudinary upload failed");
       }
 
       await onUpdateAvatar?.(data.secure_url);
     } catch (error) {
-      console.error(
-        "Error updating group avatar:",
-        error,
-      );
+      console.error("Error updating group avatar:", error);
     } finally {
       setUploadingAvatar(false);
       e.target.value = "";
@@ -577,9 +496,7 @@ function GroupInfoPanel({
       };
     }
 
-    const found = users.find(
-      (u) => u.uid === uid || u.id === uid,
-    );
+    const found = users.find((u) => u.uid === uid || u.id === uid);
 
     return found
       ? {
@@ -593,9 +510,7 @@ function GroupInfoPanel({
         };
   };
 
-  const members = (group.members || []).map(
-    getMemberInfo,
-  );
+  const members = (group.members || []).map(getMemberInfo);
 
   const availableContacts = users.filter((u) => {
     const uid = u.uid || u.id;
@@ -604,19 +519,13 @@ function GroupInfoPanel({
       return false;
     }
 
-    const s = search
-      .toLocaleLowerCase()
-      .trim();
+    const s = search.toLocaleLowerCase().trim();
 
     if (!s) return true;
 
     return (
-      u.name
-        ?.toLocaleLowerCase()
-        .includes(s) ||
-      u.email
-        ?.toLocaleLowerCase()
-        .includes(s)
+      u.name?.toLocaleLowerCase().includes(s) ||
+      u.email?.toLocaleLowerCase().includes(s)
     );
   });
 
@@ -624,12 +533,8 @@ function GroupInfoPanel({
     const uid = contact.uid || contact.id;
 
     setSelectedNew((prev) =>
-      prev.some(
-        (m) => (m.uid || m.id) === uid,
-      )
-        ? prev.filter(
-            (m) => (m.uid || m.id) !== uid,
-          )
+      prev.some((m) => (m.uid || m.id) === uid)
+        ? prev.filter((m) => (m.uid || m.id) !== uid)
         : [...prev, contact],
     );
   };
@@ -637,11 +542,7 @@ function GroupInfoPanel({
   const handleAddConfirm = () => {
     if (selectedNew.length === 0) return;
 
-    onAddMembers(
-      selectedNew.map(
-        (m) => m.uid || m.id,
-      ),
-    );
+    onAddMembers(selectedNew.map((m) => m.uid || m.id));
 
     setSelectedNew([]);
     setSearch("");
@@ -674,17 +575,13 @@ function GroupInfoPanel({
 
         <div className="group-search-wrapper">
           <div className="contacts-search">
-            <FontAwesomeIcon
-              icon={faMagnifyingGlass}
-            />
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
 
             <input
               type="text"
               placeholder="Search users..."
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => setSearch(e.target.value)}
               autoFocus
             />
           </div>
@@ -692,21 +589,11 @@ function GroupInfoPanel({
           {selectedNew.length > 0 && (
             <div className="selected-members-chips">
               {selectedNew.map((m) => (
-                <div
-                  key={m.uid || m.id}
-                  className="selected-member-chip"
-                >
+                <div key={m.uid || m.id} className="selected-member-chip">
                   <span>{m.name}</span>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggleNewMember(m)
-                    }
-                  >
-                    <FontAwesomeIcon
-                      icon={faXmark}
-                    />
+                  <button type="button" onClick={() => toggleNewMember(m)}>
+                    <FontAwesomeIcon icon={faXmark} />
                   </button>
                 </div>
               ))}
@@ -715,72 +602,50 @@ function GroupInfoPanel({
 
           <div className="contacts-list group-add-list">
             {availableContacts.length > 0 ? (
-              availableContacts.map(
-                (contact) => {
-                  const uid =
-                    contact.uid || contact.id;
+              availableContacts.map((contact) => {
+                const uid = contact.uid || contact.id;
 
-                  const isSelected =
-                    selectedNew.some(
-                      (m) =>
-                        (m.uid || m.id) ===
-                        uid,
-                    );
+                const isSelected = selectedNew.some(
+                  (m) => (m.uid || m.id) === uid,
+                );
 
-                  return (
-                    <button
-                      key={uid}
-                      type="button"
-                      className="contact-item"
-                      onClick={() =>
-                        toggleNewMember(contact)
-                      }
+                return (
+                  <button
+                    key={uid}
+                    type="button"
+                    className="contact-item"
+                    onClick={() => toggleNewMember(contact)}
+                  >
+                    {contact.avatar ? (
+                      <img
+                        src={contact.avatar}
+                        alt={contact.name}
+                        className="contact-avatar"
+                      />
+                    ) : (
+                      <div className="contact-avatar-placeholder">
+                        {(contact.name || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    <div className="contact-info">
+                      <strong>{contact.name}</strong>
+
+                      <span>{contact.email}</span>
+                    </div>
+
+                    <div
+                      className={`contact-checkbox ${
+                        isSelected ? "checked" : ""
+                      }`}
                     >
-                      {contact.avatar ? (
-                        <img
-                          src={contact.avatar}
-                          alt={contact.name}
-                          className="contact-avatar"
-                        />
-                      ) : (
-                        <div className="contact-avatar-placeholder">
-                          {(contact.name || "U")
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                      )}
-
-                      <div className="contact-info">
-                        <strong>
-                          {contact.name}
-                        </strong>
-
-                        <span>
-                          {contact.email}
-                        </span>
-                      </div>
-
-                      <div
-                        className={`contact-checkbox ${
-                          isSelected
-                            ? "checked"
-                            : ""
-                        }`}
-                      >
-                        {isSelected && (
-                          <FontAwesomeIcon
-                            icon={faCheck}
-                          />
-                        )}
-                      </div>
-                    </button>
-                  );
-                },
-              )
+                      {isSelected && <FontAwesomeIcon icon={faCheck} />}
+                    </div>
+                  </button>
+                );
+              })
             ) : (
-              <p className="contact-info-no-media">
-                No users to add
-              </p>
+              <p className="contact-info-no-media">No users to add</p>
             )}
           </div>
         </div>
@@ -791,11 +656,7 @@ function GroupInfoPanel({
   return (
     <div className="contact-info-overlay">
       <div className="contact-info-header">
-        <button
-          type="button"
-          className="contact-info-close"
-          onClick={onClose}
-        >
+        <button type="button" className="contact-info-close" onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
 
@@ -807,9 +668,7 @@ function GroupInfoPanel({
           className="contact-info-avatar-wrapper"
           onClick={handleGroupAvatarClick}
           style={{
-            cursor: isAdmin
-              ? "pointer"
-              : "default",
+            cursor: isAdmin ? "pointer" : "default",
             position: "relative",
           }}
         >
@@ -821,9 +680,7 @@ function GroupInfoPanel({
             />
           ) : (
             <div className="contact-info-avatar-placeholder">
-              <FontAwesomeIcon
-                icon={faUserGroup}
-              />
+              <FontAwesomeIcon icon={faUserGroup} />
             </div>
           )}
 
@@ -850,8 +707,7 @@ function GroupInfoPanel({
                 position: "absolute",
                 inset: 0,
                 borderRadius: "50%",
-                background:
-                  "rgba(0,0,0,0.5)",
+                background: "rgba(0,0,0,0.5)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -874,19 +730,13 @@ function GroupInfoPanel({
           />
         )}
 
-        <h2 className="contact-info-name">
-          {group.name}
-        </h2>
+        <h2 className="contact-info-name">{group.name}</h2>
 
-        <p className="contact-info-phone">
-          {members.length} members
-        </p>
+        <p className="contact-info-phone">{members.length} members</p>
 
         <div className="contact-info-section">
           <div className="contact-info-media-header">
-            <FontAwesomeIcon
-              icon={faUserGroup}
-            />
+            <FontAwesomeIcon icon={faUserGroup} />
 
             <span>Members</span>
 
@@ -898,23 +748,15 @@ function GroupInfoPanel({
           <button
             type="button"
             className="group-add-members-button"
-            onClick={() =>
-              setMode("addMembers")
-            }
+            onClick={() => setMode("addMembers")}
           >
-            <FontAwesomeIcon
-              icon={faUserPlus}
-            />
-
+            <FontAwesomeIcon icon={faUserPlus} />
             Add members
           </button>
 
           <div className="group-members-list">
             {members.map((member) => (
-              <div
-                key={member.uid}
-                className="group-member-row"
-              >
+              <div key={member.uid} className="group-member-row">
                 {member.avatar ? (
                   <img
                     src={member.avatar}
@@ -923,40 +765,25 @@ function GroupInfoPanel({
                   />
                 ) : (
                   <div className="contact-avatar-placeholder">
-                    {(member.name || "U")
-                      .charAt(0)
-                      .toUpperCase()}
+                    {(member.name || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
 
                 <div className="contact-info">
-                  <strong>
-                    {member.name}
-                  </strong>
+                  <strong>{member.name}</strong>
 
-                  {member.uid ===
-                    group.createdBy && (
-                    <span>Admin</span>
-                  )}
+                  {member.uid === group.createdBy && <span>Admin</span>}
                 </div>
 
-                {isAdmin &&
-                  member.uid !==
-                    currentUser?.uid && (
-                    <button
-                      type="button"
-                      className="group-remove-member-button"
-                      onClick={() =>
-                        onRemoveMember(
-                          member.uid,
-                        )
-                      }
-                    >
-                      <FontAwesomeIcon
-                        icon={faXmark}
-                      />
-                    </button>
-                  )}
+                {isAdmin && member.uid !== currentUser?.uid && (
+                  <button
+                    type="button"
+                    className="group-remove-member-button"
+                    onClick={() => onRemoveMember(member.uid)}
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -965,14 +792,9 @@ function GroupInfoPanel({
         <button
           type="button"
           className="group-exit-button"
-          onClick={() =>
-            setConfirmExit(true)
-          }
+          onClick={() => setConfirmExit(true)}
         >
-          <FontAwesomeIcon
-            icon={faRightFromBracket}
-          />
-
+          <FontAwesomeIcon icon={faRightFromBracket} />
           Exit group
         </button>
       </div>
@@ -982,25 +804,17 @@ function GroupInfoPanel({
           <div className="confirm-dialog">
             <h3>Exit group?</h3>
 
-            <p>
-              You will no longer receive
-              messages from this group.
-            </p>
+            <p>You will no longer receive messages from this group.</p>
 
             <div className="confirm-actions">
               <button
                 className="cancel-button"
-                onClick={() =>
-                  setConfirmExit(false)
-                }
+                onClick={() => setConfirmExit(false)}
               >
                 Cancel
               </button>
 
-              <button
-                className="confirm-logout-button"
-                onClick={onExitGroup}
-              >
+              <button className="confirm-logout-button" onClick={onExitGroup}>
                 Exit
               </button>
             </div>
@@ -1018,78 +832,64 @@ export function ChatWindow({
   onCall,
   users = [],
   onExitGroup,
+  onLoadOlder,
+  loadingOlder,
+  hasMoreMessages,
 }) {
   const currentUser = auth.currentUser;
 
-  const [showMore, setShowMore] =
-    useState(false);
+  const [showMore, setShowMore] = useState(false);
 
-  const [showSearch, setShowSearch] =
-    useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
-  const [chatSearch, setChatSearch] =
-    useState("");
+  const [chatSearch, setChatSearch] = useState("");
 
-  const [currentMatchIndex, setCurrentMatchIndex] =
-    useState(0);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  const [blockedUsers, setBlockedUsers] =
-    useState([]);
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
-  const [loadingBlock, setLoadingBlock] =
-    useState(false);
+  const [loadingBlock, setLoadingBlock] = useState(false);
 
   const [avatar, setAvatar] = useState("");
 
-  const [currentUserName, setCurrentUserName] =
-    useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
 
-  const [selectedMessage, setSelectedMessage] =
-    useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
 
-  const [contextMenu, setContextMenu] =
-    useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
 
-  const [replyingTo, setReplyingTo] =
-    useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
 
-  const [showContactInfo, setShowContactInfo] =
-    useState(false);
+  const [showContactInfo, setShowContactInfo] = useState(false);
 
-  const [showMessageInfo, setShowMessageInfo] =
-    useState(false);
+  const [showMessageInfo, setShowMessageInfo] = useState(false);
 
-  const [contactNames, setContactNames] =
-    useState({});
+  const [contactNames, setContactNames] = useState({});
 
   const messageRefs = useRef({});
   const messagesEndRef = useRef(null);
   const moreMenuRef = useRef(null);
 
+  const messagesContainerRef = useRef(null);
+  const previousScrollHeightRef = useRef(0);
+
+  // Tracks whether the current `messages` change is caused by loading older
+  // messages (pagination) so the bottom-scroll effect below can skip it.
+  const isLoadingOlderRef = useRef(false);
+
   useEffect(() => {
     if (!showMore) return;
 
     const handleClickOutside = (e) => {
-      if (
-        moreMenuRef.current &&
-        !moreMenuRef.current.contains(
-          e.target,
-        )
-      ) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
         setShowMore(false);
       }
     };
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside,
-    );
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMore]);
 
@@ -1098,72 +898,57 @@ export function ChatWindow({
 
     if (!currentUser) return;
 
-    const userRef = doc(
-      db,
-      "users",
-      currentUser.uid,
-    );
+    const userRef = doc(db, "users", currentUser.uid);
 
-    const unsubscribe = onSnapshot(
-      userRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
 
-          setAvatar(data.avatar || "");
+        setAvatar(data.avatar || "");
 
-          setCurrentUserName(
-            data.name ||
-              currentUser.displayName ||
-              "",
-          );
+        setCurrentUserName(data.name || currentUser.displayName || "");
 
-          setBlockedUsers(
-            data.blockedUsers || [],
-          );
+        setBlockedUsers(data.blockedUsers || []);
 
-          setContactNames(
-            data.contactNames || {},
-          );
-        } else {
-          setAvatar("");
+        setContactNames(data.contactNames || {});
+      } else {
+        setAvatar("");
 
-          setCurrentUserName(
-            currentUser.displayName || "",
-          );
+        setCurrentUserName(currentUser.displayName || "");
 
-          setBlockedUsers([]);
+        setBlockedUsers([]);
 
-          setContactNames({});
-        }
-      },
-    );
+        setContactNames({});
+      }
+    });
 
     return () => unsubscribe();
   }, []);
 
   const isBlocked =
-    selectedUser &&
-    !selectedUser.isGroup
-      ? blockedUsers.includes(
-          selectedUser.id,
-        )
+    selectedUser && !selectedUser.isGroup
+      ? blockedUsers.includes(selectedUser.id)
       : false;
 
   const searchMatches = chatSearch.trim()
     ? messages.filter((message) =>
         message.text
           ?.toLowerCase()
-          .includes(
-            chatSearch
-              .toLowerCase()
-              .trim(),
-          ),
+          .includes(chatSearch.toLowerCase().trim()),
       )
     : [];
 
+  // Auto-scroll to the bottom when a new message arrives or the chat
+  // changes — but NOT when the change came from loading older messages,
+  // otherwise it fights with the "preserve scroll position" logic in
+  // handleMessagesScroll and yanks the user back to the bottom.
   useEffect(() => {
     if (chatSearch.trim()) return;
+
+    if (isLoadingOlderRef.current) {
+      isLoadingOlderRef.current = false;
+      return;
+    }
 
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
@@ -1173,22 +958,15 @@ export function ChatWindow({
   }, [messages, selectedUser]);
 
   useEffect(() => {
-    if (
-      !chatSearch.trim() ||
-      searchMatches.length === 0
-    ) {
+    if (!chatSearch.trim() || searchMatches.length === 0) {
       return;
     }
 
-    const currentMatch =
-      searchMatches[currentMatchIndex];
+    const currentMatch = searchMatches[currentMatchIndex];
 
     if (!currentMatch) return;
 
-    const messageElement =
-      messageRefs.current[
-        currentMatch.id
-      ];
+    const messageElement = messageRefs.current[currentMatch.id];
 
     if (!messageElement) return;
 
@@ -1198,19 +976,13 @@ export function ChatWindow({
         block: "center",
       });
     });
-  }, [
-    chatSearch,
-    currentMatchIndex,
-    searchMatches,
-  ]);
+  }, [chatSearch, currentMatchIndex, searchMatches]);
 
   const goToNextMatch = () => {
     if (searchMatches.length === 0) return;
 
     setCurrentMatchIndex((prev) =>
-      prev + 1 >= searchMatches.length
-        ? 0
-        : prev + 1,
+      prev + 1 >= searchMatches.length ? 0 : prev + 1,
     );
   };
 
@@ -1218,9 +990,7 @@ export function ChatWindow({
     if (searchMatches.length === 0) return;
 
     setCurrentMatchIndex((prev) =>
-      prev - 1 < 0
-        ? searchMatches.length - 1
-        : prev - 1,
+      prev - 1 < 0 ? searchMatches.length - 1 : prev - 1,
     );
   };
 
@@ -1233,45 +1003,60 @@ export function ChatWindow({
   const handleBlockToggle = async () => {
     const currentUser = auth.currentUser;
 
-    if (
-      !currentUser ||
-      !selectedUser ||
-      loadingBlock
-    ) {
+    if (!currentUser || !selectedUser || loadingBlock) {
       return;
     }
 
     try {
       setLoadingBlock(true);
 
-      const userRef = doc(
-        db,
-        "users",
-        currentUser.uid,
-      );
+      const userRef = doc(db, "users", currentUser.uid);
 
       if (isBlocked) {
         await updateDoc(userRef, {
-          blockedUsers: arrayRemove(
-            selectedUser.id,
-          ),
+          blockedUsers: arrayRemove(selectedUser.id),
         });
       } else {
         await updateDoc(userRef, {
-          blockedUsers: arrayUnion(
-            selectedUser.id,
-          ),
+          blockedUsers: arrayUnion(selectedUser.id),
         });
       }
 
       setShowMore(false);
     } catch (error) {
-      console.error(
-        "Error updating block status:",
-        error,
-      );
+      console.error("Error updating block status:", error);
     } finally {
       setLoadingBlock(false);
+    }
+  };
+
+  // Handles infinite-scroll pagination: when the user scrolls near the top
+  // of the messages container, fetch older messages and keep the viewport
+  // anchored on the message that was visible before the fetch.
+  const handleMessagesScroll = async (e) => {
+    const container = e.currentTarget;
+
+    if (container.scrollTop <= 50 && !loadingOlder && hasMoreMessages) {
+      isLoadingOlderRef.current = true;
+
+      const previousScrollTop = container.scrollTop;
+      previousScrollHeightRef.current = container.scrollHeight;
+
+      try {
+        await onLoadOlder?.();
+      } catch (error) {
+        console.error("Error loading older messages:", error);
+        isLoadingOlderRef.current = false;
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        const newScrollHeight = container.scrollHeight;
+        const difference =
+          newScrollHeight - previousScrollHeightRef.current;
+
+        container.scrollTop = previousScrollTop + difference;
+      });
     }
   };
 
@@ -1279,18 +1064,9 @@ export function ChatWindow({
     if (!selectedMessage) return;
 
     try {
-      await deleteDoc(
-        doc(
-          db,
-          "messages",
-          selectedMessage.id,
-        ),
-      );
+      await deleteDoc(doc(db, "messages", selectedMessage.id));
     } catch (error) {
-      console.error(
-        "Error deleting message:",
-        error,
-      );
+      console.error("Error deleting message:", error);
     } finally {
       setSelectedMessage(null);
       setContextMenu(null);
@@ -1305,68 +1081,40 @@ export function ChatWindow({
     }
 
     try {
-      const otherUserId =
-        selectedUser.uid ||
-        selectedUser.id;
+      const otherUserId = selectedUser.uid || selectedUser.id;
 
       const sentQuery = query(
         collection(db, "messages"),
-        where(
-          "senderId",
-          "==",
-          currentUser.uid,
-        ),
-        where(
-          "receiverId",
-          "==",
-          otherUserId,
-        ),
+        where("senderId", "==", currentUser.uid),
+        where("receiverId", "==", otherUserId),
       );
 
       const receivedQuery = query(
         collection(db, "messages"),
-        where(
-          "senderId",
-          "==",
-          otherUserId,
-        ),
-        where(
-          "receiverId",
-          "==",
-          currentUser.uid,
-        ),
+        where("senderId", "==", otherUserId),
+        where("receiverId", "==", currentUser.uid),
       );
 
-      const [
-        sentSnapshot,
-        receivedSnapshot,
-      ] = await Promise.all([
+      const [sentSnapshot, receivedSnapshot] = await Promise.all([
         getDocs(sentQuery),
         getDocs(receivedQuery),
       ]);
 
       const batch = writeBatch(db);
 
-      sentSnapshot.forEach(
-        (messageDoc) => {
-          batch.delete(messageDoc.ref);
-        },
-      );
+      sentSnapshot.forEach((messageDoc) => {
+        batch.delete(messageDoc.ref);
+      });
 
-      receivedSnapshot.forEach(
-        (messageDoc) => {
-          batch.delete(messageDoc.ref);
-        },
-      );
+      receivedSnapshot.forEach((messageDoc) => {
+        batch.delete(messageDoc.ref);
+      });
 
       await batch.commit();
 
       setShowMore(false);
     } catch (error) {
-      console.error(
-        "Error deleting chat:",
-        error,
-      );
+      console.error("Error deleting chat:", error);
     }
   };
 
@@ -1374,21 +1122,11 @@ export function ChatWindow({
     if (!selectedMessage) return;
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "messages",
-          selectedMessage.id,
-        ),
-        {
-          pinned: !selectedMessage.pinned,
-        },
-      );
+      await updateDoc(doc(db, "messages", selectedMessage.id), {
+        pinned: !selectedMessage.pinned,
+      });
     } catch (error) {
-      console.error(
-        "Error toggling pin:",
-        error,
-      );
+      console.error("Error toggling pin:", error);
     } finally {
       setSelectedMessage(null);
       setContextMenu(null);
@@ -1396,40 +1134,20 @@ export function ChatWindow({
   };
 
   const handleToggleStar = async () => {
-    if (
-      !selectedMessage ||
-      !currentUser
-    ) {
+    if (!selectedMessage || !currentUser) {
       return;
     }
 
-    const isStarred =
-      selectedMessage.starredBy?.includes(
-        currentUser.uid,
-      );
+    const isStarred = selectedMessage.starredBy?.includes(currentUser.uid);
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "messages",
-          selectedMessage.id,
-        ),
-        {
-          starredBy: isStarred
-            ? arrayRemove(
-                currentUser.uid,
-              )
-            : arrayUnion(
-                currentUser.uid,
-              ),
-        },
-      );
+      await updateDoc(doc(db, "messages", selectedMessage.id), {
+        starredBy: isStarred
+          ? arrayRemove(currentUser.uid)
+          : arrayUnion(currentUser.uid),
+      });
     } catch (error) {
-      console.error(
-        "Error toggling star:",
-        error,
-      );
+      console.error("Error toggling star:", error);
     } finally {
       setSelectedMessage(null);
       setContextMenu(null);
@@ -1439,178 +1157,93 @@ export function ChatWindow({
   const displayName = selectedUser
     ? selectedUser.isGroup
       ? selectedUser.name
-      : contactNames[
-          selectedUser.uid
-        ] || selectedUser.name
+      : contactNames[selectedUser.uid] || selectedUser.name
     : "";
 
-  const handleRenameContact = async (
-    newName,
-  ) => {
-    if (
-      !currentUser ||
-      !selectedUser ||
-      !newName.trim()
-    ) {
+  const handleRenameContact = async (newName) => {
+    if (!currentUser || !selectedUser || !newName.trim()) {
       return;
     }
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "users",
-          currentUser.uid,
-        ),
-        {
-          [`contactNames.${selectedUser.uid}`]:
-            newName.trim(),
-        },
-      );
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        [`contactNames.${selectedUser.uid}`]: newName.trim(),
+      });
     } catch (error) {
-      console.error(
-        "Error renaming contact:",
-        error,
-      );
+      console.error("Error renaming contact:", error);
     }
   };
 
-  const handleAddGroupMembers = async (
-    memberIds,
-  ) => {
+  const handleAddGroupMembers = async (memberIds) => {
     if (!selectedUser?.isGroup) return;
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "groups",
-          selectedUser.id,
-        ),
-        {
-          members: arrayUnion(
-            ...memberIds,
-          ),
-        },
-      );
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayUnion(...memberIds),
+      });
     } catch (error) {
-      console.error(
-        "Error adding group members:",
-        error,
-      );
+      console.error("Error adding group members:", error);
     }
   };
 
-  const handleRemoveGroupMember = async (
-    memberId,
-  ) => {
+  const handleRemoveGroupMember = async (memberId) => {
     if (!selectedUser?.isGroup) return;
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "groups",
-          selectedUser.id,
-        ),
-        {
-          members: arrayRemove(memberId),
-        },
-      );
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayRemove(memberId),
+      });
     } catch (error) {
-      console.error(
-        "Error removing group member:",
-        error,
-      );
+      console.error("Error removing group member:", error);
     }
   };
 
   const handleExitGroup = async () => {
-    if (
-      !selectedUser?.isGroup ||
-      !currentUser
-    ) {
+    if (!selectedUser?.isGroup || !currentUser) {
       return;
     }
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "groups",
-          selectedUser.id,
-        ),
-        {
-          members: arrayRemove(
-            currentUser.uid,
-          ),
-        },
-      );
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        members: arrayRemove(currentUser.uid),
+      });
 
       setShowContactInfo(false);
 
       onExitGroup?.();
     } catch (error) {
-      console.error(
-        "Error exiting group:",
-        error,
-      );
+      console.error("Error exiting group:", error);
     }
   };
 
-  const handleUpdateGroupAvatar = async (
-    newAvatarUrl,
-  ) => {
+  const handleUpdateGroupAvatar = async (newAvatarUrl) => {
     if (!selectedUser?.isGroup) return;
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "groups",
-          selectedUser.id,
-        ),
-        {
-          avatar: newAvatarUrl,
-        },
-      );
+      await updateDoc(doc(db, "groups", selectedUser.id), {
+        avatar: newAvatarUrl,
+      });
     } catch (error) {
-      console.error(
-        "Error updating group avatar:",
-        error,
-      );
+      console.error("Error updating group avatar:", error);
     }
   };
 
-  const handleSend = (
-    text,
-    replyTo,
-  ) => {
+  const handleSend = (text, replyTo) => {
     if (isBlocked) return;
 
     onSend(text, replyTo);
   };
 
-  const renderAvatar = (
-    image,
-    name,
-    alt,
-  ) => {
+  const renderAvatar = (image, name, alt) => {
     if (image) {
       return (
-        <img
-          src={image}
-          alt={alt}
-          className="message-avatar-image"
-        />
+        <img src={image} alt={alt} className="message-avatar-image" />
       );
     }
 
     return (
       <div className="message-avatar-placeholder">
-        {(name || "U")
-          .charAt(0)
-          .toUpperCase()}
+        {(name || "U").charAt(0).toUpperCase()}
       </div>
     );
   };
@@ -1620,11 +1253,7 @@ export function ChatWindow({
       return selectedUser || {};
     }
 
-    const found = users.find(
-      (u) =>
-        u.uid === senderId ||
-        u.id === senderId,
-    );
+    const found = users.find((u) => u.uid === senderId || u.id === senderId);
 
     return (
       found || {
@@ -1638,18 +1267,11 @@ export function ChatWindow({
     return (
       <div className="chat-window empty-chat">
         <div className="start-conversation">
-          <div className="start-icon">
-            💬
-          </div>
+          <div className="start-icon">💬</div>
 
-          <h2>
-            Start a new conversation
-          </h2>
+          <h2>Start a new conversation</h2>
 
-          <p>
-            Select a user from the chat
-            list to start chatting.
-          </p>
+          <p>Select a user from the chat list to start chatting.</p>
         </div>
       </div>
     );
@@ -1660,19 +1282,13 @@ export function ChatWindow({
       {showSearch ? (
         <div className="chat-search-header">
           <div className="chat-search-box">
-            <FontAwesomeIcon
-              icon={faMagnifyingGlass}
-            />
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
 
             <input
               type="text"
               placeholder="Search"
               value={chatSearch}
-              onChange={(e) =>
-                setChatSearch(
-                  e.target.value,
-                )
-              }
+              onChange={(e) => setChatSearch(e.target.value)}
               autoFocus
             />
           </div>
@@ -1681,39 +1297,24 @@ export function ChatWindow({
             <div className="chat-search-nav">
               <span className="chat-search-count">
                 {searchMatches.length > 0
-                  ? `${
-                      currentMatchIndex +
-                      1
-                    } of ${
-                      searchMatches.length
-                    }`
+                  ? `${currentMatchIndex + 1} of ${searchMatches.length}`
                   : "0 of 0"}
               </span>
 
               <button
                 type="button"
                 onClick={goToPrevMatch}
-                disabled={
-                  searchMatches.length ===
-                  0
-                }
+                disabled={searchMatches.length === 0}
               >
-                <FontAwesomeIcon
-                  icon={faChevronUp}
-                />
+                <FontAwesomeIcon icon={faChevronUp} />
               </button>
 
               <button
                 type="button"
                 onClick={goToNextMatch}
-                disabled={
-                  searchMatches.length ===
-                  0
-                }
+                disabled={searchMatches.length === 0}
               >
-                <FontAwesomeIcon
-                  icon={faChevronDown}
-                />
+                <FontAwesomeIcon icon={faChevronDown} />
               </button>
             </div>
           )}
@@ -1731,9 +1332,7 @@ export function ChatWindow({
           <div className="prof-name-seen">
             <div
               className="prof-pic"
-              onClick={() =>
-                setShowContactInfo(true)
-              }
+              onClick={() => setShowContactInfo(true)}
               style={{
                 cursor: "pointer",
               }}
@@ -1752,11 +1351,7 @@ export function ChatWindow({
                   }}
                 />
               ) : (
-                <span>
-                  {displayName
-                    ?.charAt(0)
-                    .toUpperCase()}
-                </span>
+                <span>{displayName?.charAt(0).toUpperCase()}</span>
               )}
             </div>
 
@@ -1765,17 +1360,12 @@ export function ChatWindow({
 
               <p>
                 {selectedUser.isGroup
-                  ? `${
-                      selectedUser.members
-                        ?.length || 0
-                    } members`
+                  ? `${selectedUser.members?.length || 0} members`
                   : isBlocked
                     ? "Blocked"
                     : selectedUser.isOnline
                       ? "Online"
-                      : getLastSeen(
-                          selectedUser.lastSeen,
-                        )}
+                      : getLastSeen(selectedUser.lastSeen)}
               </p>
             </div>
           </div>
@@ -1784,13 +1374,9 @@ export function ChatWindow({
             <button
               className="chat-search-button"
               type="button"
-              onClick={() =>
-                setShowSearch(true)
-              }
+              onClick={() => setShowSearch(true)}
             >
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-              />
+              <FontAwesomeIcon icon={faMagnifyingGlass} />
             </button>
 
             {!selectedUser.isGroup && (
@@ -1815,56 +1401,38 @@ export function ChatWindow({
               </button>
             )}
 
-            <div
-              className="chat-more-wrapper"
-              ref={moreMenuRef}
-            >
+            <div className="chat-more-wrapper" ref={moreMenuRef}>
               <button
                 className="chat-more-button"
                 type="button"
-                onClick={() =>
-                  setShowMore(
-                    (prev) => !prev,
-                  )
-                }
+                onClick={() => setShowMore((prev) => !prev)}
               >
-                <FontAwesomeIcon
-                  icon={faEllipsisVertical}
-                />
+                <FontAwesomeIcon icon={faEllipsisVertical} />
               </button>
 
-              {showMore &&
-                !selectedUser.isGroup && (
-                  <div className="chat-more-menu">
-                    <button
-                      type="button"
-                      onClick={
-                        handleBlockToggle
-                      }
-                      disabled={
-                        loadingBlock
-                      }
-                    >
-                      {loadingBlock
-                        ? "Please wait..."
-                        : isBlocked
-                          ? "Unblock User"
-                          : "Block User"}
-                    </button>
-                  </div>
-                )}
+              {showMore && !selectedUser.isGroup && (
+                <div className="chat-more-menu">
+                  <button
+                    type="button"
+                    onClick={handleBlockToggle}
+                    disabled={loadingBlock}
+                  >
+                    {loadingBlock
+                      ? "Please wait..."
+                      : isBlocked
+                        ? "Unblock User"
+                        : "Block User"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {messages.some(
-        (m) => m.pinned,
-      ) && (
+      {messages.some((m) => m.pinned) && (
         <div className="pinned-bar">
-          <FontAwesomeIcon
-            icon={faThumbtack}
-          />
+          <FontAwesomeIcon icon={faThumbtack} />
 
           <div className="pinned-bar-list">
             {messages
@@ -1874,10 +1442,7 @@ export function ChatWindow({
                   key={m.id}
                   className="pinned-bar-item"
                   onClick={() => {
-                    const el =
-                      messageRefs.current[
-                        m.id
-                      ];
+                    const el = messageRefs.current[m.id];
 
                     el?.scrollIntoView({
                       behavior: "smooth",
@@ -1892,32 +1457,33 @@ export function ChatWindow({
         </div>
       )}
 
-      <div className="messages">
+      <div
+        className="messages"
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+      >
         <div className="messages-content">
-          {messages.map((message) => {
-            const isMyMessage =
-              message.senderId ===
-              currentUser?.uid;
+          {loadingOlder && (
+            <div className="older-messages-loading">
+              <div className="loading-spinner"></div>
+            </div>
+          )}
 
-            const sender =
-              getSenderInfo(
-                message.senderId,
-              );
+          {messages.map((message) => {
+            const isMyMessage = message.senderId === currentUser?.uid;
+
+            const sender = getSenderInfo(message.senderId);
 
             const isCurrentMatch =
               chatSearch.trim() &&
               searchMatches.length > 0 &&
-              searchMatches[
-                currentMatchIndex
-              ]?.id === message.id;
+              searchMatches[currentMatchIndex]?.id === message.id;
 
             return (
               <div
                 key={message.id}
                 ref={(el) => {
-                  messageRefs.current[
-                    message.id
-                  ] = el;
+                  messageRefs.current[message.id] = el;
                 }}
                 className={
                   isMyMessage
@@ -1927,11 +1493,7 @@ export function ChatWindow({
               >
                 {!isMyMessage && (
                   <div className="message-avatar">
-                    {renderAvatar(
-                      sender.avatar,
-                      sender.name,
-                      sender.name,
-                    )}
+                    {renderAvatar(sender.avatar, sender.name, sender.name)}
                   </div>
                 )}
 
@@ -1939,9 +1501,7 @@ export function ChatWindow({
                   onContextMenu={(e) => {
                     e.preventDefault();
 
-                    setSelectedMessage(
-                      message,
-                    );
+                    setSelectedMessage(message);
 
                     setContextMenu({
                       x: e.clientX,
@@ -1952,43 +1512,31 @@ export function ChatWindow({
                     (isMyMessage
                       ? "message my-message"
                       : "message other-message") +
-                    (isCurrentMatch
-                      ? " message-highlighted"
-                      : "")
+                    (isCurrentMatch ? " message-highlighted" : "")
                   }
                   style={{
                     transform:
-                      selectedMessage?.id ===
-                      message.id
+                      selectedMessage?.id === message.id
                         ? "scale(1.06)"
                         : "scale(1)",
-                    transition:
-                      "transform 0.15s ease",
+                    transition: "transform 0.15s ease",
                   }}
                 >
-                  {!isMyMessage &&
-                    selectedUser.isGroup && (
-                      <span className="message-sender-name">
-                        {sender.name}
-                      </span>
-                    )}
+                  {!isMyMessage && selectedUser.isGroup && (
+                    <span className="message-sender-name">
+                      {sender.name}
+                    </span>
+                  )}
 
                   {message.replyTo && (
                     <div className="reply-quote">
                       <span>
-                        {message.replyTo
-                          .senderId ===
-                        currentUser?.uid
+                        {message.replyTo.senderId === currentUser?.uid
                           ? "You"
                           : displayName}
                       </span>
 
-                      <p>
-                        {
-                          message.replyTo
-                            .text
-                        }
-                      </p>
+                      <p>{message.replyTo.text}</p>
                     </div>
                   )}
 
@@ -1997,12 +1545,7 @@ export function ChatWindow({
                       src={message.imageUrl}
                       alt="Sent image"
                       className="message-image"
-                      onClick={() =>
-                        window.open(
-                          message.imageUrl,
-                          "_blank",
-                        )
-                      }
+                      onClick={() => window.open(message.imageUrl, "_blank")}
                     />
                   )}
 
@@ -2013,20 +1556,14 @@ export function ChatWindow({
                       rel="noopener noreferrer"
                       className="message-file-link"
                     >
-                      📎{" "}
-                      {message.fileName ||
-                        "Download file"}
+                      📎 {message.fileName || "Download file"}
                     </a>
                   )}
 
-                  {message.text && (
-                    <p>{message.text}</p>
-                  )}
+                  {message.text && <p>{message.text}</p>}
 
                   <div className="message-meta">
-                    {message.starredBy?.includes(
-                      currentUser?.uid,
-                    ) && (
+                    {message.starredBy?.includes(currentUser?.uid) && (
                       <FontAwesomeIcon
                         icon={faStar}
                         className="message-star-icon"
@@ -2034,56 +1571,40 @@ export function ChatWindow({
                     )}
 
                     {isMyMessage && (
+                      <>
+                        <span>
+                          {message.createdAt?.toDate
+                            ? message.createdAt
+                                .toDate()
+                                .toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                            : ""}
+                        </span>
 
-<>
-              <span> 
-                          {message.createdAt
-                      ?.toDate
-                      ? message.createdAt
-                          .toDate()
-                          .toLocaleTimeString(
-                            [],
-                            {
-                              hour: "2-digit",
-                              minute:
-                                "2-digit",
-                            },
-                          )
-                      : ""}</span>
+                        <span
+                          className={
+                            message.read
+                              ? "message-ticks read"
+                              : message.delivered
+                                ? "message-ticks delivered"
+                                : "message-ticks sent"
+                          }
+                        >
+                          {message.delivered || message.read ? (
+                            <>
+                              <FontAwesomeIcon icon={faCheck} />
 
-                      <span
-                        className={
-                          message.read
-                            ? "message-ticks read"
-                            : message.delivered
-                              ? "message-ticks delivered"
-                              : "message-ticks sent"
-                        }
-                      >
-
-                        {message.delivered ||
-                        message.read ? (
-                          <>
-                            <FontAwesomeIcon
-                              icon={faCheck}
-                            />
-
-                            <FontAwesomeIcon
-                              icon={faCheck}
-                            />
-                          </>
-                        ) : (
-                          <FontAwesomeIcon
-                            icon={faCheck}
-                          />
-                        )}
-                      </span>
-                        </>
+                              <FontAwesomeIcon icon={faCheck} />
+                            </>
+                          ) : (
+                            <FontAwesomeIcon icon={faCheck} />
+                          )}
+                        </span>
+                      </>
                     )}
-
-            
                   </div>
-                    
                 </div>
 
                 {isMyMessage && (
@@ -2105,137 +1626,92 @@ export function ChatWindow({
         </div>
       </div>
 
-      {selectedMessage &&
-        contextMenu && (
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            onClose={() => {
+      {selectedMessage && contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => {
+            setSelectedMessage(null);
+            setContextMenu(null);
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setReplyingTo(selectedMessage);
+
               setSelectedMessage(null);
               setContextMenu(null);
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setReplyingTo(
-                  selectedMessage,
-                );
+            <FontAwesomeIcon icon={faReply} />
+            Reply
+          </button>
 
-                setSelectedMessage(null);
-                setContextMenu(null);
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faReply}
-              />
+          <button type="button" onClick={handleTogglePin}>
+            <FontAwesomeIcon icon={faThumbtack} />
+            {selectedMessage.pinned ? "Unpin" : "Pin"}
+          </button>
 
-              Reply
-            </button>
+          <button type="button" onClick={handleToggleStar}>
+            <FontAwesomeIcon icon={faStar} />
+            {selectedMessage.starredBy?.includes(currentUser?.uid)
+              ? "Unstar"
+              : "Star"}
+          </button>
 
-            <button
-              type="button"
-              onClick={handleTogglePin}
-            >
-              <FontAwesomeIcon
-                icon={faThumbtack}
-              />
-
-              {selectedMessage.pinned
-                ? "Unpin"
-                : "Pin"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleToggleStar}
-            >
-              <FontAwesomeIcon
-                icon={faStar}
-              />
-
-              {selectedMessage.starredBy?.includes(
-                currentUser?.uid,
-              )
-                ? "Unstar"
-                : "Star"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowMessageInfo(true);
-                setContextMenu(null);
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faCircleInfo}
-              />
-
-              Message Info
-            </button>
-
-            <button
-              type="button"
-              className="danger"
-              onClick={
-                handleDeleteMessage
-              }
-            >
-              <FontAwesomeIcon
-                icon={faTrash}
-              />
-
-              Delete
-            </button>
-          </ContextMenu>
-        )}
-
-      {showMessageInfo &&
-        selectedMessage && (
-          <MessageInfoPanel
-            message={selectedMessage}
-            selectedUser={selectedUser}
-            users={users}
-            onClose={() => {
-              setShowMessageInfo(false);
-              setSelectedMessage(null);
+          <button
+            type="button"
+            onClick={() => {
+              setShowMessageInfo(true);
+              setContextMenu(null);
             }}
-          />
-        )}
+          >
+            <FontAwesomeIcon icon={faCircleInfo} />
+            Message Info
+          </button>
+
+          <button
+            type="button"
+            className="danger"
+            onClick={handleDeleteMessage}
+          >
+            <FontAwesomeIcon icon={faTrash} />
+            Delete
+          </button>
+        </ContextMenu>
+      )}
+
+      {showMessageInfo && selectedMessage && (
+        <MessageInfoPanel
+          message={selectedMessage}
+          selectedUser={selectedUser}
+          users={users}
+          onClose={() => {
+            setShowMessageInfo(false);
+            setSelectedMessage(null);
+          }}
+        />
+      )}
 
       {showContactInfo &&
         (selectedUser.isGroup ? (
           <GroupInfoPanel
             group={selectedUser}
             users={users}
-            onClose={() =>
-              setShowContactInfo(false)
-            }
-            onAddMembers={
-              handleAddGroupMembers
-            }
-            onRemoveMember={
-              handleRemoveGroupMember
-            }
-            onExitGroup={
-              handleExitGroup
-            }
-            onUpdateAvatar={
-              handleUpdateGroupAvatar
-            }
+            onClose={() => setShowContactInfo(false)}
+            onAddMembers={handleAddGroupMembers}
+            onRemoveMember={handleRemoveGroupMember}
+            onExitGroup={handleExitGroup}
+            onUpdateAvatar={handleUpdateGroupAvatar}
           />
         ) : (
           <ContactInfoPanel
             user={selectedUser}
             displayName={displayName}
             messages={messages}
-            onClose={() =>
-              setShowContactInfo(false)
-            }
-            onRename={
-              handleRenameContact
-            }
+            onClose={() => setShowContactInfo(false)}
+            onRename={handleRenameContact}
             onCall={() => {
               setShowContactInfo(false);
               onCall();
@@ -2252,9 +1728,7 @@ export function ChatWindow({
           <button
             type="button"
             className="delete-chat"
-            onClick={
-              handleDeleteChat
-            }
+            onClick={handleDeleteChat}
           >
             Delete chat
           </button>
@@ -2262,14 +1736,10 @@ export function ChatWindow({
           <button
             type="button"
             className="unblock-button"
-            onClick={
-              handleBlockToggle
-            }
+            onClick={handleBlockToggle}
             disabled={loadingBlock}
           >
-            {loadingBlock
-              ? "Please wait..."
-              : "Unblock"}
+            {loadingBlock ? "Please wait..." : "Unblock"}
           </button>
         </div>
       ) : (
@@ -2279,23 +1749,18 @@ export function ChatWindow({
               <div className="reply-preview-content">
                 <span className="reply-preview-label">
                   Replying to{" "}
-                  {replyingTo.senderId ===
-                  currentUser?.uid
+                  {replyingTo.senderId === currentUser?.uid
                     ? "yourself"
                     : displayName}
                 </span>
 
-                <p>
-                  {replyingTo.text}
-                </p>
+                <p>{replyingTo.text}</p>
               </div>
 
               <button
                 type="button"
                 className="reply-preview-close"
-                onClick={() =>
-                  setReplyingTo(null)
-                }
+                onClick={() => setReplyingTo(null)}
               >
                 ×
               </button>
@@ -2304,10 +1769,7 @@ export function ChatWindow({
 
           <MessageInput
             onSend={(payload) => {
-              handleSend(
-                payload,
-                replyingTo,
-              );
+              handleSend(payload, replyingTo);
 
               setReplyingTo(null);
             }}
