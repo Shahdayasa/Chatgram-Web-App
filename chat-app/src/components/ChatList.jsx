@@ -9,10 +9,11 @@ export function Chatlist({
   previews,
   groupPreviews = {},
   searchTerm,
-  unreadCounts = {}, 
+  unreadCounts = {},
 }) {
   const search = searchTerm.trim().toLowerCase();
 
+  // بس الأشخاص اللي في preview إلهم (يعني حكيت معهم)
   const userItems = users
     .filter((user) => previews[user.id])
     .map((user) => ({
@@ -20,17 +21,16 @@ export function Chatlist({
       id: user.id,
       data: user,
       preview: previews[user.id],
-      sortDate:
-        previews[user.id]?.createdAt?.toDate?.() || new Date(0),
+      sortDate: previews[user.id]?.createdAt?.toDate?.() || new Date(0),
     }));
 
+  // كل الجروبات، مرتبة حسب تاريخ إنشاء الجروب نفسه (مش آخر رسالة)
   const groupItems = groups.map((group) => ({
     type: "group",
     id: group.id,
     data: group,
     preview: groupPreviews[group.id],
-    sortDate:
-      groupPreviews[group.id]?.createdAt?.toDate?.() || new Date(0),
+    sortDate: group.createdAt?.toDate?.() || new Date(0),
   }));
 
   let chatItems;
@@ -41,9 +41,8 @@ export function Chatlist({
     );
   } else {
     const filteredUsers = users
-      .filter((user) =>
-        user.name?.toLowerCase().includes(search),
-      )
+      .filter((user) => previews[user.id])
+      .filter((user) => user.name?.toLowerCase().includes(search))
       .map((user) => ({
         type: "user",
         id: user.id,
@@ -52,9 +51,7 @@ export function Chatlist({
       }));
 
     const filteredGroups = groups
-      .filter((group) =>
-        group.name?.toLowerCase().includes(search),
-      )
+      .filter((group) => group.name?.toLowerCase().includes(search))
       .map((group) => ({
         type: "group",
         id: group.id,
@@ -97,9 +94,7 @@ export function Chatlist({
                 )?.name || "Someone"
             : "";
 
-       
-        const unreadCount = !isGroup ? unreadCounts[id] || 0 : 0;
-
+const unreadCount = !isGroup ? unreadCounts[data.uid] || 0 : 0;
         return (
           <div
             key={id}
