@@ -7,13 +7,13 @@ import { auth } from "./firebase/firebase";
 import "./App.css";
 
 const Login = lazy(() =>
-  import("./pages/Login").then((m) => ({ default: m.Login }))
+  import("./pages/Login").then((m) => ({ default: m.Login })),
 );
 const Register = lazy(() =>
-  import("./pages/Register").then((m) => ({ default: m.Register }))
+  import("./pages/Register").then((m) => ({ default: m.Register })),
 );
 const Chat = lazy(() =>
-  import("./pages/Chat").then((m) => ({ default: m.Chat }))
+  import("./pages/Chat").then((m) => ({ default: m.Chat })),
 );
 
 function App() {
@@ -92,9 +92,13 @@ function App() {
               )
             }
           />
-
           <Route
             path="/chat"
+            element={user ? <Chat /> : <Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="/chat/:userId"
             element={user ? <Chat /> : <Navigate to="/login" replace />}
           />
 

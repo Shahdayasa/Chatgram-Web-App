@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-
+import { useParams, useNavigate } from "react-router-dom";
 import {
   collection,
   onSnapshot,
@@ -45,8 +45,12 @@ import {
 } from "../services/webrtc";
 
 export function Chat() {
+    const { userId } = useParams();
+  const navigate = useNavigate();
+
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+
   const [messages, setMessages] = useState([]);
 
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -183,6 +187,20 @@ export function Chat() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+  if (!userId || users.length === 0) {
+    return;
+  }
+
+  const userFromUrl = users.find(
+    (user) => user.uid === userId || user.id === userId
+  );
+
+  if (userFromUrl) {
+    setSelectedUser(userFromUrl);
+  }
+}, [userId, users]);
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -1255,8 +1273,15 @@ useEffect(() => {
         <Chatlist
           users={users}
           groups={groups}
-          onSelectUser={setSelectedUser}
-          previews={previews}
+onSelectUser={(user) => {
+  setSelectedUser(user);
+
+  if (user.isGroup) {
+    navigate(`/chat/${user.id}`);
+  } else {
+    navigate(`/chat/${user.uid}`);
+  }
+}}          previews={previews}
           groupPreviews={groupPreviews}
           searchTerm={searchTerm}
           unreadCounts={unreadCounts}
