@@ -869,7 +869,7 @@ export function ChatWindow({
   const [showMessageInfo, setShowMessageInfo] = useState(false);
 
   const [contactNames, setContactNames] = useState({});
-
+const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
   const messageRefs = useRef({});
   const messagesEndRef = useRef(null);
   const moreMenuRef = useRef(null);
@@ -1083,51 +1083,52 @@ const handleMessagesScroll = async (e) => {
     }
   };
 
-  const handleDeleteChat = async () => {
-    const currentUser = auth.currentUser;
+const handleDeleteChat = async () => {
+  const currentUser = auth.currentUser;
 
-    if (!currentUser || !selectedUser) {
-      return;
-    }
+  if (!currentUser || !selectedUser) {
+    return;
+  }
 
-    try {
-      const otherUserId = selectedUser.uid || selectedUser.id;
+  try {
+    const otherUserId = selectedUser.uid || selectedUser.id;
 
-      const sentQuery = query(
-        collection(db, "messages"),
-        where("senderId", "==", currentUser.uid),
-        where("receiverId", "==", otherUserId),
-      );
+    const sentQuery = query(
+      collection(db, "messages"),
+      where("senderId", "==", currentUser.uid),
+      where("receiverId", "==", otherUserId),
+    );
 
-      const receivedQuery = query(
-        collection(db, "messages"),
-        where("senderId", "==", otherUserId),
-        where("receiverId", "==", currentUser.uid),
-      );
+    const receivedQuery = query(
+      collection(db, "messages"),
+      where("senderId", "==", otherUserId),
+      where("receiverId", "==", currentUser.uid),
+    );
 
-      const [sentSnapshot, receivedSnapshot] = await Promise.all([
-        getDocs(sentQuery),
-        getDocs(receivedQuery),
-      ]);
+    const [sentSnapshot, receivedSnapshot] = await Promise.all([
+      getDocs(sentQuery),
+      getDocs(receivedQuery),
+    ]);
 
-      const batch = writeBatch(db);
+    const batch = writeBatch(db);
 
-      sentSnapshot.forEach((messageDoc) => {
-        batch.delete(messageDoc.ref);
-      });
+    sentSnapshot.forEach((messageDoc) => {
+      batch.delete(messageDoc.ref);
+    });
 
-      receivedSnapshot.forEach((messageDoc) => {
-        batch.delete(messageDoc.ref);
-      });
+    receivedSnapshot.forEach((messageDoc) => {
+      batch.delete(messageDoc.ref);
+    });
 
-      await batch.commit();
+    await batch.commit();
 
-      setShowMore(false);
-    } catch (error) {
-      console.error("Error deleting chat:", error);
-    }
-  };
-
+    setShowMore(false);
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+  } finally {
+    setConfirmDeleteChat(false);
+  }
+};
   const handleTogglePin = async () => {
     if (!selectedMessage) return;
 
@@ -1746,7 +1747,7 @@ if (!selectedUser) {
           <button
             type="button"
             className="delete-chat"
-            onClick={handleDeleteChat}
+            onClick={() => setConfirmDeleteChat(true)}
           >
             Delete chat
           </button>
@@ -1764,35 +1765,36 @@ if (!selectedUser) {
         <>
           {replyingTo && (
             <div className="reply-preview">
-              <div className="reply-preview-content">
-                <span className="reply-preview-label">
-                  Replying to{" "}
-                  {replyingTo.senderId === currentUser?.uid
-                    ? "yourself"
-                    : displayName}
-                </span>
-
-                <p>{replyingTo.text}</p>
-              </div>
-
-              <button
-                type="button"
-                className="reply-preview-close"
-                onClick={() => setReplyingTo(null)}
-              >
-                ×
-              </button>
+              ...
             </div>
           )}
 
           <MessageInput
             onSend={(payload) => {
               handleSend(payload, replyingTo);
-
               setReplyingTo(null);
             }}
           />
         </>
+      )}
+
+      {confirmDeleteChat && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <h3>Are you sure you want to Delete this chat?</h3>
+            <div className="confirm-actions">
+              <button
+                className="cancel-button"
+                onClick={() => setConfirmDeleteChat(false)}
+              >
+                Cancel
+              </button>
+              <button className="confirm-logout-button" onClick={handleDeleteChat}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

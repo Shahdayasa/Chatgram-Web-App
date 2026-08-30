@@ -41,10 +41,12 @@ export function Chat() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
+
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   const oldestMessageRef = useRef(null);
+
   const usersRef = useRef([]);
 
   const [previews, setPreviews] = useState({});
@@ -105,7 +107,8 @@ export function Chat() {
 
       setIsSpeaking(average > 10);
 
-      animationFrame = requestAnimationFrame(checkVolume);
+      animationFrame =
+        requestAnimationFrame(checkVolume);
     };
 
     checkVolume();
@@ -152,29 +155,16 @@ export function Chat() {
 
   useEffect(() => {
     if (!("Notification" in window)) {
-      console.log("❌ Browser notifications are not supported");
       return;
     }
 
-    console.log(
-      "🔔 Current notification permission:",
-      Notification.permission
-    );
-
     if (Notification.permission === "default") {
-      Notification.requestPermission()
-        .then((permission) => {
-          console.log(
-            "🔐 Notification permission:",
-            permission
-          );
-        })
-        .catch((error) => {
-          console.error(
-            "❌ Notification permission error:",
-            error
-          );
-        });
+      Notification.requestPermission().catch((error) => {
+        console.error(
+          "Notification permission error:",
+          error
+        );
+      });
     }
   }, []);
 
@@ -189,10 +179,6 @@ export function Chat() {
       auth,
       async (currentUser) => {
         if (!currentUser) {
-          console.log(
-            "❌ No authenticated user for notifications"
-          );
-
           if (unsubscribeMessages) {
             unsubscribeMessages();
             unsubscribeMessages = null;
@@ -201,33 +187,18 @@ export function Chat() {
           return;
         }
 
-        console.log(
-          "✅ Authenticated user:",
-          currentUser.uid
-        );
-
         if (Notification.permission === "default") {
           try {
-            const permission =
-              await Notification.requestPermission();
-
-            console.log(
-              "🔐 Notification permission:",
-              permission
-            );
+            await Notification.requestPermission();
           } catch (error) {
             console.error(
-              "❌ Permission request failed:",
+              "Permission request failed:",
               error
             );
           }
         }
 
         if (Notification.permission !== "granted") {
-          console.log(
-            "❌ Notification permission is not granted:",
-            Notification.permission
-          );
           return;
         }
 
@@ -240,27 +211,13 @@ export function Chat() {
           )
         );
 
-        console.log(
-          "🔔 Starting notification listener..."
-        );
-
         let initialized = false;
 
         unsubscribeMessages = onSnapshot(
           messagesQuery,
           async (snapshot) => {
-            console.log(
-              "📩 Notification snapshot:",
-              snapshot.docChanges().length
-            );
-
             if (!initialized) {
               initialized = true;
-
-              console.log(
-                "✅ Existing messages loaded. No notifications for old messages."
-              );
-
               return;
             }
 
@@ -271,19 +228,10 @@ export function Chat() {
 
               const message = change.doc.data();
 
-              console.log(
-                "📨 NEW MESSAGE DETECTED:",
-                message
-              );
-
               if (
                 message.senderId ===
                 currentUser.uid
               ) {
-                console.log(
-                  "⏭️ Message belongs to current user"
-                );
-
                 continue;
               }
 
@@ -321,7 +269,7 @@ export function Chat() {
                   }
                 } catch (error) {
                   console.error(
-                    "❌ Error getting sender:",
+                    "Error getting sender:",
                     error
                   );
                 }
@@ -344,20 +292,6 @@ export function Chat() {
                 body = "New message";
               }
 
-              console.log(
-                "👤 Sender:",
-                senderName
-              );
-
-              console.log(
-                "💬 Notification body:",
-                body
-              );
-
-              console.log(
-                "🚨 Creating browser notification..."
-              );
-
               try {
                 const notification =
                   new Notification(
@@ -373,7 +307,6 @@ export function Chat() {
 
                 notification.onclick = () => {
                   window.focus();
-
                   notification.close();
 
                   const sender =
@@ -387,32 +320,9 @@ export function Chat() {
                     setSelectedUser(sender);
                   }
                 };
-
-                notification.onshow = () => {
-                  console.log(
-                    "✅ NOTIFICATION SHOWED"
-                  );
-                };
-
-                notification.onerror = (error) => {
-                  console.error(
-                    "❌ NOTIFICATION ERROR:",
-                    error
-                  );
-                };
-
-                notification.onclose = () => {
-                  console.log(
-                    "🔕 Notification closed"
-                  );
-                };
-
-                console.log(
-                  "✅ Notification object created successfully"
-                );
               } catch (error) {
                 console.error(
-                  "❌ FAILED TO CREATE NOTIFICATION:",
+                  "Failed to create notification:",
                   error
                 );
               }
@@ -420,7 +330,7 @@ export function Chat() {
           },
           (error) => {
             console.error(
-              "❌ Notification listener error:",
+              "Notification listener error:",
               error
             );
           }
@@ -474,8 +384,7 @@ export function Chat() {
           }
 
           if (
-            message.receiverId ===
-              currentUser.uid &&
+            message.receiverId === currentUser.uid &&
             message.senderId &&
             !message.read
           ) {
@@ -498,6 +407,15 @@ export function Chat() {
     return () => unsubscribe();
   }, []);
 
+  /*
+   * PERSONAL CHAT PAGINATION
+   *
+   * عند فتح المحادثة:
+   * آخر 10 رسائل فقط.
+   *
+   * عند scroll للأعلى:
+   * نجيب الـ10 الأقدم مباشرة.
+   */
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -530,7 +448,7 @@ export function Chat() {
     const unsubscribe = onSnapshot(
       messageQuery,
       (snapshot) => {
-        const latestMessages =
+        const allLatestMessages =
           snapshot.docs.map(
             (messageDoc) => ({
               id: messageDoc.id,
@@ -538,42 +456,47 @@ export function Chat() {
             })
           );
 
-        if (snapshot.docs.length > 0) {
-          oldestMessageRef.current =
-            snapshot.docs[0];
-        }
-
-        if (snapshot.docs.length < 10) {
-          setHasMoreMessages(false);
-        }
-
         const selectedMessages =
-          latestMessages.filter(
+          allLatestMessages.filter(
             (message) =>
-              (message.senderId ===
-                currentUserId &&
+              (message.senderId === currentUserId &&
                 message.receiverId ===
                   otherUserId) ||
-              (message.senderId ===
-                otherUserId &&
+              (message.senderId === otherUserId &&
                 message.receiverId ===
                   currentUserId)
           );
 
+        /*
+         * مهم:
+         * oldestMessageRef يجب أن يشير لأول رسالة
+         * في المحادثة الحالية وليس أول رسالة عشوائية.
+         */
+        if (selectedMessages.length > 0) {
+          const oldestSelected =
+            selectedMessages[0];
+
+          const oldestDoc =
+            snapshot.docs.find(
+              (docSnap) =>
+                docSnap.id ===
+                oldestSelected.id
+            );
+
+          if (oldestDoc) {
+            oldestMessageRef.current =
+              oldestDoc;
+          }
+        }
+
+    
         setMessages(selectedMessages);
 
         const latestMessagesMap = {};
 
-        latestMessages.forEach((message) => {
-          const otherId =
-            message.senderId === currentUserId
-              ? message.receiverId
-              : message.senderId;
-
-          if (otherId) {
-            latestMessagesMap[otherId] =
-              message;
-          }
+        selectedMessages.forEach((message) => {
+          latestMessagesMap[otherUserId] =
+            message;
         });
 
         setPreviews((prev) => ({
@@ -646,6 +569,9 @@ export function Chat() {
     return () => unsubscribe();
   }, [selectedUser]);
 
+  /*
+   * GROUPS
+   */
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -751,19 +677,27 @@ export function Chat() {
     return () => unsubscribe();
   }, [groups]);
 
+  /*
+   * GROUP MESSAGE PAGINATION
+   */
   useEffect(() => {
     if (!selectedUser?.isGroup) return;
 
-    const groupMessagesQuery =
-      query(
-        collection(db, "messages"),
-        where(
-          "groupId",
-          "==",
-          selectedUser.id
-        ),
-        orderBy("createdAt", "asc")
-      );
+    setMessages([]);
+    setLoadingOlder(false);
+    setHasMoreMessages(true);
+    oldestMessageRef.current = null;
+
+    const groupMessagesQuery = query(
+      collection(db, "messages"),
+      where(
+        "groupId",
+        "==",
+        selectedUser.id
+      ),
+      orderBy("createdAt", "asc"),
+      limitToLast(10)
+    );
 
     const unsubscribe = onSnapshot(
       groupMessagesQuery,
@@ -775,6 +709,20 @@ export function Chat() {
               ...messageDoc.data(),
             })
           );
+
+        if (snapshot.docs.length > 0) {
+          oldestMessageRef.current =
+            snapshot.docs[0];
+        }
+
+        /*
+         * لا نضع false فقط لأننا أخذنا 10.
+         * إذا كان عندنا 10 فهذا يعني احتمال وجود
+         * رسائل أقدم.
+         */
+        setHasMoreMessages(
+          snapshot.docs.length === 10
+        );
 
         setMessages(groupMessages);
       },
@@ -789,6 +737,9 @@ export function Chat() {
     return () => unsubscribe();
   }, [selectedUser]);
 
+  /*
+   * LOAD OLDER MESSAGES
+   */
   const loadOlderMessages = async () => {
     if (
       loadingOlder ||
@@ -805,10 +756,11 @@ export function Chat() {
       const currentUserId =
         auth.currentUser.uid;
 
-      let olderQuery;
-
+      /*
+       * GROUP
+       */
       if (selectedUser.isGroup) {
-        olderQuery = query(
+        const olderQuery = query(
           collection(db, "messages"),
           where(
             "groupId",
@@ -821,21 +773,63 @@ export function Chat() {
           ),
           limitToLast(10)
         );
-      } else {
-        olderQuery = query(
-          collection(db, "messages"),
-          where(
-            "participants",
-            "array-contains",
-            currentUserId
-          ),
-          orderBy("createdAt", "asc"),
-          endBefore(
-            oldestMessageRef.current
-          ),
-          limitToLast(10)
-        );
+
+        const snapshot =
+          await getDocs(olderQuery);
+
+        if (snapshot.empty) {
+          setHasMoreMessages(false);
+          return;
+        }
+
+        const olderMessages =
+          snapshot.docs.map(
+            (messageDoc) => ({
+              id: messageDoc.id,
+              ...messageDoc.data(),
+            })
+          );
+
+        oldestMessageRef.current =
+          snapshot.docs[0];
+
+        /*
+         * إذا رجع أقل من 10 فهذا آخر جزء.
+         */
+        if (snapshot.docs.length < 10) {
+          setHasMoreMessages(false);
+        }
+
+        setMessages((prev) => [
+          ...olderMessages,
+          ...prev,
+        ]);
+
+        return;
       }
+
+      /*
+       * PERSONAL CHAT
+       *
+       * المشكلة الأساسية كانت هنا:
+       * query واحد على كل participants ثم filter.
+       *
+       * الآن نجيب الرسائل القديمة من query
+       * ونفلتر فقط المحادثة المطلوبة.
+       */
+      const olderQuery = query(
+        collection(db, "messages"),
+        where(
+          "participants",
+          "array-contains",
+          currentUserId
+        ),
+        orderBy("createdAt", "asc"),
+        endBefore(
+          oldestMessageRef.current
+        ),
+        limitToLast(10)
+      );
 
       const snapshot =
         await getDocs(olderQuery);
@@ -853,36 +847,53 @@ export function Chat() {
           })
         );
 
+      /*
+       * نحتفظ فقط برسائل الشخص المحدد.
+       */
+      const filteredOlderMessages =
+        olderMessages.filter(
+          (message) =>
+            (message.senderId ===
+              currentUserId &&
+              message.receiverId ===
+                selectedUser.uid) ||
+            (message.senderId ===
+              selectedUser.uid &&
+              message.receiverId ===
+                currentUserId)
+        );
+
+      /*
+       * مهم جدًا:
+       * نحرّك cursor إلى أقدم document تم جلبه
+       * حتى لو كان من محادثة أخرى.
+       *
+       * هذا يسمح لنا بالاستمرار في البحث للخلف.
+       */
       oldestMessageRef.current =
         snapshot.docs[0];
 
+      /*
+       * إذا رجع أقل من 10 من Firestore
+       * وصلنا لبداية رسائل المستخدم.
+       */
       if (snapshot.docs.length < 10) {
         setHasMoreMessages(false);
       }
 
-      if (selectedUser.isGroup) {
-        setMessages((prev) => [
-          ...olderMessages,
-          ...prev,
-        ]);
-      } else {
-        const filteredOlderMessages =
-          olderMessages.filter(
-            (message) =>
-              (message.senderId ===
-                currentUserId &&
-                message.receiverId ===
-                  selectedUser.uid) ||
-              (message.senderId ===
-                selectedUser.uid &&
-                message.receiverId ===
-                  currentUserId)
-          );
-
+      if (filteredOlderMessages.length > 0) {
         setMessages((prev) => [
           ...filteredOlderMessages,
           ...prev,
         ]);
+      } else {
+        /*
+         * إذا كانت الـ10 كلها من محادثات أخرى،
+         * لا نوقف pagination.
+         *
+         * نترك hasMoreMessages كما هو
+         * ونسمح للـscroll التالي بجلب batch أقدم.
+         */
       }
     } catch (error) {
       console.error(
@@ -894,6 +905,9 @@ export function Chat() {
     }
   };
 
+  /*
+   * SEND MESSAGE
+   */
   const handleSend = async (
     message,
     replyTo
@@ -1003,6 +1017,9 @@ export function Chat() {
     }
   };
 
+  /*
+   * ONLINE / OFFLINE
+   */
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -1049,6 +1066,9 @@ export function Chat() {
     };
   }, []);
 
+  /*
+   * INCOMING CALL
+   */
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -1097,7 +1117,7 @@ export function Chat() {
       },
       (error) => {
         console.error(
-          "Error Listening for incoming calls:",
+          "Error listening for incoming calls:",
           error
         );
       }
@@ -1106,6 +1126,9 @@ export function Chat() {
     return () => unsubscribe();
   }, [users]);
 
+  /*
+   * CALL
+   */
   const handleCall = async () => {
     if (
       !selectedUser ||
@@ -1347,9 +1370,7 @@ export function Chat() {
           onExitGroup={() =>
             setSelectedUser(null)
           }
-          loadOlderMessages={
-            loadOlderMessages
-          }
+        onLoadOlder={loadOlderMessages}
           loadingOlder={loadingOlder}
           hasMoreMessages={
             hasMoreMessages
