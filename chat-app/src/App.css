@@ -859,6 +859,10 @@ background-color: #fffcf9;
   transition: outline 0.2s ease;
 }
 
+
+/*.message-highlighted p{
+background-color: #f2b400;
+}*/
 .chat-search-nav {
   display: flex;
   align-items: center;

@@ -51,9 +51,15 @@ const getLastSeen = (timestamp) => {
 
   const lastSeenDate = timestamp.toDate();
   const now = new Date();
-  const diffInSeconds = Math.floor((now - lastSeenDate) / 1000);
 
-  if (diffInSeconds < 60) return "Last seen just now";
+  const diffInSeconds = Math.max(
+    0,
+    Math.floor((now - lastSeenDate) / 1000)
+  );
+
+  if (diffInSeconds < 60) {
+    return "Last seen just now";
+  }
 
   const diffInMinutes = Math.floor(diffInSeconds / 60);
 
@@ -80,6 +86,18 @@ const getLastSeen = (timestamp) => {
   return `Last seen ${lastSeenDate.toLocaleDateString()}`;
 };
 
+const isUserOnline = (user) => {
+  if (!user?.lastActive?.toDate) {
+    return false;
+  }
+
+  const lastActiveTime = user.lastActive.toDate().getTime();
+
+  const differenceInSeconds =
+    (Date.now() - lastActiveTime) / 1000;
+
+  return differenceInSeconds < 25;
+};
 function ContextMenu({ x, y, onClose, children }) {
   const menuRef = useRef(null);
 
@@ -1370,15 +1388,15 @@ if (!selectedUser) {
             <div className="name-status">
               <h3>{displayName}</h3>
 
-              <p>
-                {selectedUser.isGroup
-                  ? `${selectedUser.members?.length || 0} members`
-                  : isBlocked
-                    ? "Blocked"
-                    : selectedUser.isOnline
-                      ? "Online"
-                      : getLastSeen(selectedUser.lastSeen)}
-              </p>
+           <p>
+  {selectedUser.isGroup
+    ? `${selectedUser.members?.length || 0} members`
+    : isBlocked
+      ? "Blocked"
+      : isUserOnline(selectedUser)
+        ? "Online"
+        : getLastSeen(selectedUser.lastActive)}
+</p>
             </div>
           </div>
 

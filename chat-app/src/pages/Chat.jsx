@@ -747,25 +747,59 @@ export function Chat() {
     }
   };
 
-  useEffect(() => {
-    const currentUser = auth.currentUser;
+useEffect(() => {
+  const currentUser = auth.currentUser;
 
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    const userRef = doc(db, "users", currentUser.uid);
+  const userRef = doc(db, "users", currentUser.uid);
 
-    setDoc(userRef, { isOnline: true }, { merge: true }).catch((error) =>
-      console.error("Error setting user online:", error)
-    );
+  const sendHeartbeat = async () => {
+    // لا نرسل heartbeat إذا التاب غير ظاهر
+    if (document.visibilityState !== "visible") {
+      return;
+    }
 
-    return () => {
-      setDoc(
+    try {
+      await setDoc(
         userRef,
-        { isOnline: false, lastSeen: serverTimestamp() },
+        {
+          isOnline: true,
+          lastActive: serverTimestamp(),
+        },
         { merge: true }
-      ).catch((error) => console.error("Error setting user offline:", error));
-    };
-  }, []);
+      );
+    } catch (error) {
+      console.error("Heartbeat error:", error);
+    }
+  };
+
+  sendHeartbeat();
+
+  const heartbeatInterval = setInterval(() => {
+    sendHeartbeat();
+  }, 15000);
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      sendHeartbeat();
+    }
+  };
+
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange
+  );
+
+  return () => {
+    clearInterval(heartbeatInterval);
+
+    document.removeEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+  };
+}, []);
 
   useEffect(() => {
     if (!callState) {
