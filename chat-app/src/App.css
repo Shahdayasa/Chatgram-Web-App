@@ -4002,3 +4002,266 @@ right: 0;
     transform: rotate(360deg);
   }
 }
+
+
+
+.add-participants-button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 11px 16px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.add-participants-button:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.add-participants-button:active {
+  transform: scale(0.97);
+}
+
+/* =========================================================
+   CALL PARTICIPANTS
+   ========================================================= */
+
+.participants-section {
+  position: relative;
+  width: 100%;
+}
+
+.add-participant-button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 11px 16px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #edf9ee;
+  color: #4caf50;
+
+  font-size: 14px;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+
+  cursor: pointer;
+
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.add-participant-button:hover {
+  background-color: #d9f2da;
+}
+
+.add-participant-button:active {
+  transform: scale(0.97);
+}
+
+.participants-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+
+  max-height: 260px;
+  overflow-y: auto;
+
+  padding: 10px;
+
+  background: #ffffff;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+
+  box-shadow: 0 10px 30px rgba(1, 22, 39, 0.15);
+
+  text-align: left;
+
+  animation: moreMenuOpen 0.18s ease;
+}
+
+.participants-dropdown h4 {
+  margin: 4px 6px 10px;
+  color: #011627;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.participant-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  padding: 8px 6px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  color: #011627;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: background-color 0.15s ease;
+}
+
+.participant-item:hover {
+  background-color: #f5f8fc;
+}
+
+.participant-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+
+  border-radius: 50%;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: #78e378;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.participant-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.no-users {
+  padding: 16px 6px;
+  color: #707991;
+  font-size: 13px;
+  text-align: center;
+}
+
+.current-participants {
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.current-participants h4 {
+  margin: 0 0 8px;
+  color: #707991;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.current-participant {
+  padding: 6px 4px;
+  color: #011627;
+  font-size: 14px;
+}
+
+.current-participant {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 8px 4px;
+
+  color: #011627;
+  font-size: 14px;
+}
+
+.current-participant-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+
+  border-radius: 50%;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: #78e378;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.current-participant-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.call-avatar-stack {
+  display: flex;
+  justify-content: center;
+  margin: 20px auto 10px;
+  height: 90px;
+}
+
+.call-avatar-stack-item {
+  width: 72px;
+  height: 72px;
+  margin-left: -20px;
+  border-radius: 50%;
+  border: 3px solid white;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d9e2f3;
+  color: #011627;
+  font-size: 24px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(1, 22, 39, 0.15);
+}
+
+.call-avatar-stack-item:first-child {
+  margin-left: 0;
+}
+
+.call-avatar-stack-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.call-avatar-stack-item.ringing {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.call-avatar-stack-more {
+  background: #707991;
+  color: white;
+  font-size: 16px;
+}

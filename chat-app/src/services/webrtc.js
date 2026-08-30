@@ -8,6 +8,10 @@ import {
   addDoc,
   getDoc,
   onSnapshot,
+  arrayUnion,
+  arrayRemove,
+  query,
+  where,
 } from "firebase/firestore";
 
 const configuration = {
@@ -34,6 +38,7 @@ export async function createCall(
   callerId,
   receiverId,
   stream,
+  sessionId,
   onRemoteStream
 ) {
   const peerConnection = createPeerConnection();
@@ -49,18 +54,15 @@ export async function createCall(
   };
 
   const callRef = doc(db, "calls", callId);
-
-  const callerCandidatesRef = collection(
-    callRef,
-    "callerCandidates"
-  );
+  const callerCandidatesRef = collection(callRef, "callerCandidates");
 
   peerConnection.onicecandidate = async (event) => {
-    if (event.candidate) {
-      await addDoc(
-        callerCandidatesRef,
-        event.candidate.toJSON()
-      );
+    if (!event.candidate) return;
+
+    try {
+      await addDoc(callerCandidatesRef, event.candidate.toJSON());
+    } catch (error) {
+      console.error("Error adding caller ICE candidate:", error);
     }
   };
 
@@ -71,6 +73,7 @@ export async function createCall(
   await setDoc(callRef, {
     callerId,
     receiverId,
+    sessionId,
     status: "calling",
     offer: {
       type: offer.type,
@@ -82,11 +85,7 @@ export async function createCall(
   return peerConnection;
 }
 
-export function listenForAnswer(
-  callId,
-  peerConnection,
-  onStatusChange
-) {
+export function listenForAnswer(callId, peerConnection, onStatusChange) {
   const callRef = doc(db, "calls", callId);
 
   return onSnapshot(callRef, async (snapshot) => {
@@ -94,63 +93,49 @@ export function listenForAnswer(
 
     if (!data) return;
 
-    if (
-      data.answer &&
-      !peerConnection.currentRemoteDescription
-    ) {
+    if (data.answer && !peerConnection.currentRemoteDescription) {
       try {
         const answer = new RTCSessionDescription(data.answer);
 
         await peerConnection.setRemoteDescription(answer);
 
-        console.log("Remote answer received");
-
         if (onStatusChange) {
           onStatusChange("connected");
         }
       } catch (error) {
-        console.error(
-          "Error setting remote answer:",
-          error
-        );
+        console.error("Error setting remote answer:", error);
       }
+    }
+
+    if (data.status === "rejected") {
+      onStatusChange?.("rejected");
+    }
+
+    if (data.status === "ended") {
+      onStatusChange?.("ended");
     }
   });
 }
-export function listenForReceiverCandidates(
-  callId,
-  peerConnection
-) {
+
+export function listenForReceiverCandidates(callId, peerConnection) {
   const callRef = doc(db, "calls", callId);
+  const receiverCandidatesRef = collection(callRef, "receiverCandidates");
 
-  const receiverCandidatesRef = collection(
-    callRef,
-    "receiverCandidates"
-  );
+  return onSnapshot(receiverCandidatesRef, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
 
-  return onSnapshot(
-    receiverCandidatesRef,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const candidate = new RTCIceCandidate(
-            change.doc.data()
-          );
+      const candidate = new RTCIceCandidate(change.doc.data());
 
-          peerConnection.addIceCandidate(candidate);
-        }
+      peerConnection.addIceCandidate(candidate).catch((error) => {
+        console.error("Error adding receiver ICE candidate:", error);
       });
-    }
-  );
+    });
+  });
 }
 
-export async function acceptCall(
-  callId,
-  stream,
-  onRemoteStream
-) {
+export async function acceptCall(callId, stream, onRemoteStream) {
   const callRef = doc(db, "calls", callId);
-
   const callSnapshot = await getDoc(callRef);
 
   if (!callSnapshot.exists()) {
@@ -175,23 +160,19 @@ export async function acceptCall(
     }
   };
 
-  const receiverCandidatesRef = collection(
-    callRef,
-    "receiverCandidates"
-  );
+  const receiverCandidatesRef = collection(callRef, "receiverCandidates");
 
   peerConnection.onicecandidate = async (event) => {
-    if (event.candidate) {
-      await addDoc(
-        receiverCandidatesRef,
-        event.candidate.toJSON()
-      );
+    if (!event.candidate) return;
+
+    try {
+      await addDoc(receiverCandidatesRef, event.candidate.toJSON());
+    } catch (error) {
+      console.error("Error adding receiver ICE candidate:", error);
     }
   };
 
-  const offer = new RTCSessionDescription(
-    callData.offer
-  );
+  const offer = new RTCSessionDescription(callData.offer);
 
   await peerConnection.setRemoteDescription(offer);
 
@@ -207,7 +188,7 @@ export async function acceptCall(
     status: "connected",
   });
 
-  return peerConnection;
+  return { peerConnection, callData };
 }
 
 export function listenForCallStatus(callId, onStatusChange) {
@@ -225,35 +206,28 @@ export function listenForCallStatus(callId, onStatusChange) {
     if (data.status === "rejected") {
       onStatusChange("rejected");
     }
+
+    if (data.status === "connected") {
+      onStatusChange("connected");
+    }
   });
 }
 
-
-export function listenForCallerCandidates(
-  callId,
-  peerConnection
-) {
+export function listenForCallerCandidates(callId, peerConnection) {
   const callRef = doc(db, "calls", callId);
+  const callerCandidatesRef = collection(callRef, "callerCandidates");
 
-  const callerCandidatesRef = collection(
-    callRef,
-    "callerCandidates"
-  );
+  return onSnapshot(callerCandidatesRef, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
 
-  return onSnapshot(
-    callerCandidatesRef,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const candidate = new RTCIceCandidate(
-            change.doc.data()
-          );
+      const candidate = new RTCIceCandidate(change.doc.data());
 
-          peerConnection.addIceCandidate(candidate);
-        }
+      peerConnection.addIceCandidate(candidate).catch((error) => {
+        console.error("Error adding caller ICE candidate:", error);
       });
-    }
-  );
+    });
+  });
 }
 
 export async function rejectCall(callId) {
@@ -269,5 +243,68 @@ export async function endCall(callId) {
 
   await updateDoc(callRef, {
     status: "ended",
+  });
+}
+
+export function listenForIncomingCalls(myUid, onIncomingCall) {
+  const callsQuery = query(
+    collection(db, "calls"),
+    where("receiverId", "==", myUid),
+    where("status", "==", "calling")
+  );
+
+  return onSnapshot(callsQuery, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type !== "added") return;
+
+      onIncomingCall({ id: change.doc.id, ...change.doc.data() });
+    });
+  });
+}
+
+export async function createCallSession(uid) {
+  const sessionRef = doc(collection(db, "callSessions"));
+
+  await setDoc(sessionRef, {
+    participants: [uid],
+    initiatorId: uid,
+    createdAt: Date.now(),
+  });
+
+  return sessionRef.id;
+}
+
+export async function joinCallSession(sessionId, uid) {
+  const sessionRef = doc(db, "callSessions", sessionId);
+
+  await updateDoc(sessionRef, {
+    participants: arrayUnion(uid),
+  });
+}
+
+export async function leaveCallSession(sessionId, uid) {
+  const sessionRef = doc(db, "callSessions", sessionId);
+
+  await updateDoc(sessionRef, {
+    participants: arrayRemove(uid),
+  }).catch(() => {});
+}
+
+export async function getCallSessionParticipants(sessionId) {
+  const sessionRef = doc(db, "callSessions", sessionId);
+  const snapshot = await getDoc(sessionRef);
+
+  if (!snapshot.exists()) return [];
+
+  return snapshot.data().participants || [];
+}
+
+export function listenForCallSession(sessionId, onChange) {
+  const sessionRef = doc(db, "callSessions", sessionId);
+
+  return onSnapshot(sessionRef, (snapshot) => {
+    const data = snapshot.data();
+
+    onChange(data?.participants || []);
   });
 }
