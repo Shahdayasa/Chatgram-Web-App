@@ -382,7 +382,7 @@ function ContactInfoPanel({
           <span className="contact-info-section-label">About</span>
 
           <p className="contact-info-about">
-            {user?.about || "Hey there! I am using WhatsApp."}
+            {user?.description || "Hey there! I am using WhatsApp."}
           </p>
         </div>
 
@@ -1626,17 +1626,9 @@ if (!selectedUser) {
                   </div>
                 </div>
 
-                {isMyMessage && (
-                  <div className="message-avatar">
-                    {renderAvatar(
-                      avatar,
-                      currentUserName ||
-                        currentUser?.displayName ||
-                        currentUser?.email,
-                      "You",
-                    )}
-                  </div>
-                )}
+
+
+
               </div>
             );
           })}
