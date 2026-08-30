@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
 import {
   collection,
   onSnapshot,
@@ -45,19 +46,21 @@ import {
 } from "../services/webrtc";
 
 export function Chat() {
-    const { userId } = useParams();
+  const { userId } = useParams();
   const navigate = useNavigate();
+
+  // =========================
+  // USERS / CHAT
+  // =========================
 
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-
   const [messages, setMessages] = useState([]);
 
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
   const oldestMessageRef = useRef(null);
-
   const usersRef = useRef([]);
 
   const [previews, setPreviews] = useState({});
@@ -65,6 +68,16 @@ export function Chat() {
   const [groupPreviews, setGroupPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [unreadCounts, setUnreadCounts] = useState({});
+
+  // =========================
+  // CONTACT NAMES / NICKNAMES
+  // =========================
+
+  const [contactNames, setContactNames] = useState({});
+
+  // =========================
+  // CALL
+  // =========================
 
   const [callState, setCallState] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -84,6 +97,10 @@ export function Chat() {
   const callIdsByUidRef = useRef({});
   const sessionIdRef = useRef(null);
   const processedCallIdsRef = useRef(new Set());
+
+  // =========================================================
+  // DETECT SPEAKING
+  // =========================================================
 
   useEffect(() => {
     const combinedStreams = Object.values(remoteStreams);
@@ -110,7 +127,10 @@ export function Chat() {
 
       source.connect(analyser);
 
-      analysers.push({ analyser, source });
+      analysers.push({
+        analyser,
+        source,
+      });
     });
 
     let animationFrame;
@@ -131,7 +151,9 @@ export function Chat() {
 
         const average = sum / dataArray.length;
 
-        if (average > maxAverage) maxAverage = average;
+        if (average > maxAverage) {
+          maxAverage = average;
+        }
       });
 
       setIsSpeaking(maxAverage > 10);
@@ -152,6 +174,10 @@ export function Chat() {
       audioContext.close();
     };
   }, [remoteStreams]);
+
+  // =========================================================
+  // LOAD USERS
+  // =========================================================
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -188,19 +214,70 @@ export function Chat() {
     return () => unsubscribe();
   }, []);
 
+  // =========================================================
+  // LOAD CONTACT NAMES / NICKNAMES
+  // =========================================================
+
   useEffect(() => {
-  if (!userId || users.length === 0) {
-    return;
-  }
+    let unsubscribeAuth = null;
 
-  const userFromUrl = users.find(
-    (user) => user.uid === userId || user.id === userId
-  );
+    const loadContactNames = async (currentUser) => {
+      if (!currentUser) {
+        setContactNames({});
+        return;
+      }
 
-  if (userFromUrl) {
-    setSelectedUser(userFromUrl);
-  }
-}, [userId, users]);
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+
+        const userSnapshot = await getDoc(userRef);
+
+        if (!userSnapshot.exists()) {
+          setContactNames({});
+          return;
+        }
+
+        const userData = userSnapshot.data();
+
+        setContactNames(userData.contactNames || {});
+      } catch (error) {
+        console.error("Error loading contact names:", error);
+        setContactNames({});
+      }
+    };
+
+    unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      loadContactNames(currentUser);
+    });
+
+    return () => {
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+      }
+    };
+  }, []);
+
+  // =========================================================
+  // SELECT USER FROM URL
+  // =========================================================
+
+  useEffect(() => {
+    if (!userId || users.length === 0) {
+      return;
+    }
+
+    const userFromUrl = users.find(
+      (user) => user.uid === userId || user.id === userId
+    );
+
+    if (userFromUrl) {
+      setSelectedUser(userFromUrl);
+    }
+  }, [userId, users]);
+
+  // =========================================================
+  // REQUEST NOTIFICATION PERMISSION
+  // =========================================================
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -214,126 +291,159 @@ export function Chat() {
     }
   }, []);
 
+  // =========================================================
+  // MESSAGE NOTIFICATIONS
+  // =========================================================
+
   useEffect(() => {
     let unsubscribeMessages = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        if (unsubscribeMessages) {
-          unsubscribeMessages();
-          unsubscribeMessages = null;
-        }
-
-        return;
-      }
-
-      if (Notification.permission === "default") {
-        try {
-          await Notification.requestPermission();
-        } catch (error) {
-          console.error("Permission request failed:", error);
-        }
-      }
-
-      if (Notification.permission !== "granted") {
-        return;
-      }
-
-      const messagesQuery = query(
-        collection(db, "messages"),
-        where("receiverId", "==", currentUser.uid)
-      );
-
-      let initialized = false;
-
-      unsubscribeMessages = onSnapshot(
-        messagesQuery,
-        async (snapshot) => {
-          if (!initialized) {
-            initialized = true;
-            return;
+    const unsubscribeAuth = onAuthStateChanged(
+      auth,
+      async (currentUser) => {
+        if (!currentUser) {
+          if (unsubscribeMessages) {
+            unsubscribeMessages();
+            unsubscribeMessages = null;
           }
 
-          for (const change of snapshot.docChanges()) {
-            if (change.type !== "added") {
-              continue;
+          return;
+        }
+
+        if (Notification.permission === "default") {
+          try {
+            await Notification.requestPermission();
+          } catch (error) {
+            console.error("Permission request failed:", error);
+          }
+        }
+
+        if (Notification.permission !== "granted") {
+          return;
+        }
+
+        const messagesQuery = query(
+          collection(db, "messages"),
+          where("receiverId", "==", currentUser.uid)
+        );
+
+        let initialized = false;
+
+        unsubscribeMessages = onSnapshot(
+          messagesQuery,
+          async (snapshot) => {
+            if (!initialized) {
+              initialized = true;
+              return;
             }
 
-            const message = change.doc.data();
-
-            if (message.senderId === currentUser.uid) {
-              continue;
-            }
-
-            let senderName = "New message";
-
-            const localSender = usersRef.current.find(
-              (user) => user.uid === message.senderId
-            );
-
-            if (localSender?.name) {
-              senderName = localSender.name;
-            } else if (message.senderId) {
-              try {
-                const senderRef = doc(db, "users", message.senderId);
-
-                const senderSnapshot = await getDoc(senderRef);
-
-                if (senderSnapshot.exists()) {
-                  const senderData = senderSnapshot.data();
-
-                  senderName =
-                    senderData.name ||
-                    senderData.displayName ||
-                    senderData.username ||
-                    "New message";
-                }
-              } catch (error) {
-                console.error("Error getting sender:", error);
+            for (const change of snapshot.docChanges()) {
+              if (change.type !== "added") {
+                continue;
               }
-            }
 
-            let body = "New message";
+              const message = change.doc.data();
 
-            if (typeof message.text === "string" && message.text.trim()) {
-              body = message.text.trim();
-            } else if (message.imageUrl) {
-              body = "📷 Photo";
-            } else if (message.fileUrl) {
-              body = `📎 ${message.fileName || "File"}`;
-            }
+              if (message.senderId === currentUser.uid) {
+                continue;
+              }
 
-            try {
-              const notification = new Notification(senderName, {
-                body,
-                icon: "/favicon.ico",
-                badge: "/favicon.ico",
-                tag: `chat-message-${change.doc.id}`,
-                requireInteraction: false,
-              });
+              let senderName = "New message";
 
-              notification.onclick = () => {
-                window.focus();
-                notification.close();
+              const localSender = usersRef.current.find(
+                (user) => user.uid === message.senderId
+              );
 
-                const sender = usersRef.current.find(
-                  (user) => user.uid === message.senderId
+              if (localSender?.name) {
+                senderName =
+                  contactNames[message.senderId] ||
+                  localSender.name;
+              } else if (message.senderId) {
+                try {
+                  const senderRef = doc(
+                    db,
+                    "users",
+                    message.senderId
+                  );
+
+                  const senderSnapshot = await getDoc(senderRef);
+
+                  if (senderSnapshot.exists()) {
+                    const senderData = senderSnapshot.data();
+
+                    senderName =
+                      senderData.name ||
+                      senderData.displayName ||
+                      senderData.username ||
+                      "New message";
+                  }
+                } catch (error) {
+                  console.error(
+                    "Error getting sender:",
+                    error
+                  );
+                }
+              }
+
+              let body = "New message";
+
+              if (
+                typeof message.text === "string" &&
+                message.text.trim()
+              ) {
+                body = message.text.trim();
+              } else if (message.imageUrl) {
+                body = "📷 Photo";
+              } else if (message.fileUrl) {
+                body = `📎 ${
+                  message.fileName || "File"
+                }`;
+              }
+
+              try {
+                const notification = new Notification(
+                  senderName,
+                  {
+                    body,
+                    icon: "/favicon.ico",
+                    badge: "/favicon.ico",
+                    tag: `chat-message-${change.doc.id}`,
+                    requireInteraction: false,
+                  }
                 );
 
-                if (sender) {
-                  setSelectedUser(sender);
-                }
-              };
-            } catch (error) {
-              console.error("Failed to create notification:", error);
+                notification.onclick = () => {
+                  window.focus();
+
+                  notification.close();
+
+                  const sender =
+                    usersRef.current.find(
+                      (user) =>
+                        user.uid === message.senderId
+                    );
+
+                  if (sender) {
+                    setSelectedUser(sender);
+                  }
+                };
+              } catch (error) {
+                console.error(
+                  "Failed to create notification:",
+                  error
+                );
+              }
             }
+          },
+          (error) => {
+            console.error(
+              "Notification listener error:",
+              error
+            );
           }
-        },
-        (error) => {
-          console.error("Notification listener error:", error);
-        }
-      );
-    });
+        );
+      }
+    );
 
     return () => {
       if (unsubscribeMessages) {
@@ -342,16 +452,26 @@ export function Chat() {
 
       unsubscribeAuth();
     };
-  }, []);
+  }, [contactNames]);
+
+  // =========================================================
+  // LOAD MESSAGE PREVIEWS + UNREAD COUNTS
+  // =========================================================
 
   useEffect(() => {
     const currentUser = auth.currentUser;
 
-    if (!currentUser) return;
+    if (!currentUser) {
+      return;
+    }
 
     const previewsQuery = query(
       collection(db, "messages"),
-      where("participants", "array-contains", currentUser.uid),
+      where(
+        "participants",
+        "array-contains",
+        currentUser.uid
+      ),
       orderBy("createdAt", "asc")
     );
 
@@ -390,15 +510,24 @@ export function Chat() {
         setUnreadCounts(unreadMap);
       },
       (error) => {
-        console.error("Error getting previews:", error);
+        console.error(
+          "Error getting previews:",
+          error
+        );
       }
     );
 
     return () => unsubscribe();
   }, []);
 
+  // =========================================================
+  // LOAD PRIVATE CHAT MESSAGES
+  // =========================================================
+
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      return;
+    }
 
     if (!selectedUser || selectedUser.isGroup) {
       return;
@@ -414,7 +543,11 @@ export function Chat() {
 
     const messageQuery = query(
       collection(db, "messages"),
-      where("participants", "array-contains", currentUserId),
+      where(
+        "participants",
+        "array-contains",
+        currentUserId
+      ),
       orderBy("createdAt", "asc"),
       limitToLast(10)
     );
@@ -422,24 +555,28 @@ export function Chat() {
     const unsubscribe = onSnapshot(
       messageQuery,
       (snapshot) => {
-        const allLatestMessages = snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }));
+        const allLatestMessages =
+          snapshot.docs.map((messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          }));
 
-        const selectedMessages = allLatestMessages.filter(
-          (message) =>
-            (message.senderId === currentUserId &&
-              message.receiverId === otherUserId) ||
-            (message.senderId === otherUserId &&
-              message.receiverId === currentUserId)
-        );
+        const selectedMessages =
+          allLatestMessages.filter(
+            (message) =>
+              (message.senderId === currentUserId &&
+                message.receiverId === otherUserId) ||
+              (message.senderId === otherUserId &&
+                message.receiverId === currentUserId)
+          );
 
         if (selectedMessages.length > 0) {
-          const oldestSelected = selectedMessages[0];
+          const oldestSelected =
+            selectedMessages[0];
 
           const oldestDoc = snapshot.docs.find(
-            (docSnap) => docSnap.id === oldestSelected.id
+            (docSnap) =>
+              docSnap.id === oldestSelected.id
           );
 
           if (oldestDoc) {
@@ -455,84 +592,135 @@ export function Chat() {
             message.senderId === otherUserId &&
             !message.read
           ) {
-            updateDoc(doc(db, "messages", message.id), {
-              read: true,
-              readAt: serverTimestamp(),
-            }).catch((error) =>
-              console.error("Error marking message read:", error)
+            updateDoc(
+              doc(db, "messages", message.id),
+              {
+                read: true,
+                readAt: serverTimestamp(),
+              }
+            ).catch((error) =>
+              console.error(
+                "Error marking message read:",
+                error
+              )
             );
           }
 
-          if (message.receiverId === currentUserId && !message.delivered) {
-            updateDoc(doc(db, "messages", message.id), {
-              delivered: true,
-              deliveredAt: serverTimestamp(),
-            }).catch((error) =>
-              console.error("Error marking message delivered:", error)
+          if (
+            message.receiverId === currentUserId &&
+            !message.delivered
+          ) {
+            updateDoc(
+              doc(db, "messages", message.id),
+              {
+                delivered: true,
+                deliveredAt: serverTimestamp(),
+              }
+            ).catch((error) =>
+              console.error(
+                "Error marking message delivered:",
+                error
+              )
             );
           }
         });
       },
       (error) => {
-        console.error("Error getting messages:", error);
+        console.error(
+          "Error getting messages:",
+          error
+        );
       }
     );
 
     return () => unsubscribe();
   }, [selectedUser]);
 
+  // =========================================================
+  // LOAD GROUPS
+  // =========================================================
+
   useEffect(() => {
     let unsubscribeGroups = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      if (unsubscribeGroups) {
-        unsubscribeGroups();
-        unsubscribeGroups = null;
-      }
-
-      if (!currentUser) {
-        setGroups([]);
-        return;
-      }
-
-      const groupsQuery = query(
-        collection(db, "groups"),
-        where("members", "array-contains", currentUser.uid)
-      );
-
-      unsubscribeGroups = onSnapshot(
-        groupsQuery,
-        (snapshot) => {
-          const groupsData = snapshot.docs.map((groupDoc) => ({
-            id: groupDoc.id,
-            uid: groupDoc.id,
-            isGroup: true,
-            ...groupDoc.data(),
-          }));
-
-          setGroups(groupsData);
-        },
-        (error) => {
-          console.error("Error getting groups:", error);
+    const unsubscribeAuth = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        if (unsubscribeGroups) {
+          unsubscribeGroups();
+          unsubscribeGroups = null;
         }
-      );
-    });
+
+        if (!currentUser) {
+          setGroups([]);
+          return;
+        }
+
+        const groupsQuery = query(
+          collection(db, "groups"),
+          where(
+            "members",
+            "array-contains",
+            currentUser.uid
+          )
+        );
+
+        unsubscribeGroups = onSnapshot(
+          groupsQuery,
+          (snapshot) => {
+            const groupsData =
+              snapshot.docs.map((groupDoc) => ({
+                id: groupDoc.id,
+                uid: groupDoc.id,
+                isGroup: true,
+                ...groupDoc.data(),
+              }));
+
+            setGroups(groupsData);
+          },
+          (error) => {
+            console.error(
+              "Error getting groups:",
+              error
+            );
+          }
+        );
+      }
+    );
 
     return () => {
-      if (unsubscribeGroups) unsubscribeGroups();
+      if (unsubscribeGroups) {
+        unsubscribeGroups();
+      }
+
       unsubscribeAuth();
     };
   }, []);
 
+  // =========================================================
+  // UPDATE SELECTED GROUP
+  // =========================================================
+
   useEffect(() => {
-    if (!selectedUser?.isGroup) return;
+    if (!selectedUser?.isGroup) {
+      return;
+    }
 
-    const updatedGroup = groups.find((g) => g.id === selectedUser.id);
+    const updatedGroup = groups.find(
+      (group) => group.id === selectedUser.id
+    );
 
-    if (updatedGroup && updatedGroup !== selectedUser) {
+    if (
+      updatedGroup &&
+      updatedGroup !== selectedUser
+    ) {
       setSelectedUser(updatedGroup);
     }
   }, [groups, selectedUser]);
+
+  // =========================================================
+  // GROUP PREVIEWS
+  // =========================================================
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -540,7 +728,9 @@ export function Chat() {
       return;
     }
 
-    const groupIds = groups.map((g) => g.id).slice(0, 10);
+    const groupIds = groups
+      .map((group) => group.id)
+      .slice(0, 10);
 
     const previewQuery = query(
       collection(db, "messages"),
@@ -565,15 +755,24 @@ export function Chat() {
         setGroupPreviews(latest);
       },
       (error) => {
-        console.error("Error getting group previews:", error);
+        console.error(
+          "Error getting group previews:",
+          error
+        );
       }
     );
 
     return () => unsubscribe();
   }, [groups]);
 
+  // =========================================================
+  // GROUP MESSAGES
+  // =========================================================
+
   useEffect(() => {
-    if (!selectedUser?.isGroup) return;
+    if (!selectedUser?.isGroup) {
+      return;
+    }
 
     setMessages([]);
     setLoadingOlder(false);
@@ -590,26 +789,37 @@ export function Chat() {
     const unsubscribe = onSnapshot(
       groupMessagesQuery,
       (snapshot) => {
-        const groupMessages = snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }));
+        const groupMessages =
+          snapshot.docs.map((messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          }));
 
         if (snapshot.docs.length > 0) {
-          oldestMessageRef.current = snapshot.docs[0];
+          oldestMessageRef.current =
+            snapshot.docs[0];
         }
 
-        setHasMoreMessages(snapshot.docs.length === 10);
+        setHasMoreMessages(
+          snapshot.docs.length === 10
+        );
 
         setMessages(groupMessages);
       },
       (error) => {
-        console.error("Error getting group messages:", error);
+        console.error(
+          "Error getting group messages:",
+          error
+        );
       }
     );
 
     return () => unsubscribe();
   }, [selectedUser]);
+
+  // =========================================================
+  // LOAD OLDER MESSAGES
+  // =========================================================
 
   const loadOlderMessages = async () => {
     if (
@@ -624,99 +834,164 @@ export function Chat() {
     try {
       setLoadingOlder(true);
 
-      const currentUserId = auth.currentUser.uid;
+      const currentUserId =
+        auth.currentUser.uid;
 
       if (selectedUser.isGroup) {
         const olderQuery = query(
           collection(db, "messages"),
-          where("groupId", "==", selectedUser.id),
+          where(
+            "groupId",
+            "==",
+            selectedUser.id
+          ),
           orderBy("createdAt", "asc"),
-          endBefore(oldestMessageRef.current),
+          endBefore(
+            oldestMessageRef.current
+          ),
           limitToLast(10)
         );
 
-        const snapshot = await getDocs(olderQuery);
+        const snapshot =
+          await getDocs(olderQuery);
 
         if (snapshot.empty) {
           setHasMoreMessages(false);
           return;
         }
 
-        const olderMessages = snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }));
+        const olderMessages =
+          snapshot.docs.map((messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          }));
 
-        oldestMessageRef.current = snapshot.docs[0];
+        oldestMessageRef.current =
+          snapshot.docs[0];
 
         if (snapshot.docs.length < 10) {
           setHasMoreMessages(false);
         }
 
-        setMessages((prev) => [...olderMessages, ...prev]);
+        setMessages((prev) => [
+          ...olderMessages,
+          ...prev,
+        ]);
 
         return;
       }
 
       const olderQuery = query(
         collection(db, "messages"),
-        where("participants", "array-contains", currentUserId),
+        where(
+          "participants",
+          "array-contains",
+          currentUserId
+        ),
         orderBy("createdAt", "asc"),
-        endBefore(oldestMessageRef.current),
+        endBefore(
+          oldestMessageRef.current
+        ),
         limitToLast(10)
       );
 
-      const snapshot = await getDocs(olderQuery);
+      const snapshot =
+        await getDocs(olderQuery);
 
       if (snapshot.empty) {
         setHasMoreMessages(false);
         return;
       }
 
-      const olderMessages = snapshot.docs.map((messageDoc) => ({
-        id: messageDoc.id,
-        ...messageDoc.data(),
-      }));
+      const olderMessages =
+        snapshot.docs.map((messageDoc) => ({
+          id: messageDoc.id,
+          ...messageDoc.data(),
+        }));
 
-      const filteredOlderMessages = olderMessages.filter(
-        (message) =>
-          (message.senderId === currentUserId &&
-            message.receiverId === selectedUser.uid) ||
-          (message.senderId === selectedUser.uid &&
-            message.receiverId === currentUserId)
-      );
+      const filteredOlderMessages =
+        olderMessages.filter(
+          (message) =>
+            (message.senderId === currentUserId &&
+              message.receiverId ===
+                selectedUser.uid) ||
+            (message.senderId ===
+              selectedUser.uid &&
+              message.receiverId ===
+                currentUserId)
+        );
 
-      oldestMessageRef.current = snapshot.docs[0];
+      oldestMessageRef.current =
+        snapshot.docs[0];
 
       if (snapshot.docs.length < 10) {
         setHasMoreMessages(false);
       }
 
       if (filteredOlderMessages.length > 0) {
-        setMessages((prev) => [...filteredOlderMessages, ...prev]);
+        setMessages((prev) => [
+          ...filteredOlderMessages,
+          ...prev,
+        ]);
       }
     } catch (error) {
-      console.error("Error loading older messages:", error);
+      console.error(
+        "Error loading older messages:",
+        error
+      );
     } finally {
       setLoadingOlder(false);
     }
   };
 
-  const handleSend = async (message, replyTo) => {
-    if (!selectedUser || !auth.currentUser) {
+  // =========================================================
+  // SEND MESSAGE
+  // =========================================================
+
+  const handleSend = async (
+    message,
+    replyTo
+  ) => {
+    if (
+      !selectedUser ||
+      !auth.currentUser
+    ) {
       return;
     }
 
-    const isAttachment = typeof message === "object" && message !== null;
+    const isAttachment =
+      typeof message === "object" &&
+      message !== null;
 
-    const text = isAttachment ? message.text || "" : message;
-    const imageUrl = isAttachment ? message.imageUrl || null : null;
-    const fileUrl = isAttachment ? message.fileUrl || null : null;
-    const fileName = isAttachment ? message.fileName || null : null;
-    const fileType = isAttachment ? message.fileType || null : null;
-    const fileSize = isAttachment ? message.fileSize || null : null;
+    const text = isAttachment
+      ? message.text || ""
+      : message;
 
-    if (!text?.trim() && !imageUrl && !fileUrl) {
+    const imageUrl = isAttachment
+      ? message.imageUrl || null
+      : null;
+
+    const fileUrl = isAttachment
+      ? message.fileUrl || null
+      : null;
+
+    const fileName = isAttachment
+      ? message.fileName || null
+      : null;
+
+    const fileType = isAttachment
+      ? message.fileType || null
+      : null;
+
+    const fileSize = isAttachment
+      ? message.fileSize || null
+      : null;
+
+    if (
+      !text?.trim() &&
+      !imageUrl &&
+      !fileUrl
+    ) {
       return;
     }
 
@@ -730,94 +1005,138 @@ export function Chat() {
 
     try {
       if (selectedUser.isGroup) {
-        await addDoc(collection(db, "messages"), {
-          text: text?.trim() || "",
-          imageUrl,
-          fileUrl,
-          fileName,
-          fileType,
-          fileSize,
-          senderId: auth.currentUser.uid,
-          groupId: selectedUser.id,
-          isGroup: true,
-          createdAt: serverTimestamp(),
-          replyTo: replyToData,
-        });
+        await addDoc(
+          collection(db, "messages"),
+          {
+            text: text?.trim() || "",
+            imageUrl,
+            fileUrl,
+            fileName,
+            fileType,
+            fileSize,
+            senderId:
+              auth.currentUser.uid,
+            groupId: selectedUser.id,
+            isGroup: true,
+            createdAt:
+              serverTimestamp(),
+            replyTo: replyToData,
+          }
+        );
       } else {
-        await addDoc(collection(db, "messages"), {
-          text: text?.trim() || "",
-          imageUrl,
-          fileUrl,
-          fileName,
-          fileType,
-          fileSize,
-          senderId: auth.currentUser.uid,
-          receiverId: selectedUser.uid,
-          participants: [auth.currentUser.uid, selectedUser.uid],
-          createdAt: serverTimestamp(),
-          delivered: false,
-          read: false,
-          replyTo: replyToData,
-        });
+        await addDoc(
+          collection(db, "messages"),
+          {
+            text: text?.trim() || "",
+            imageUrl,
+            fileUrl,
+            fileName,
+            fileType,
+            fileSize,
+            senderId:
+              auth.currentUser.uid,
+            receiverId:
+              selectedUser.uid,
+            participants: [
+              auth.currentUser.uid,
+              selectedUser.uid,
+            ],
+            createdAt:
+              serverTimestamp(),
+            delivered: false,
+            read: false,
+            replyTo: replyToData,
+          }
+        );
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error(
+        "Error sending message:",
+        error
+      );
     }
   };
 
-useEffect(() => {
-  const currentUser = auth.currentUser;
+  // =========================================================
+  // HEARTBEAT / ONLINE STATUS
+  // =========================================================
 
-  if (!currentUser) return;
+  useEffect(() => {
+    const currentUser = auth.currentUser;
 
-  const userRef = doc(db, "users", currentUser.uid);
-
-  const sendHeartbeat = async () => {
-    // لا نرسل heartbeat إذا التاب غير ظاهر
-    if (document.visibilityState !== "visible") {
+    if (!currentUser) {
       return;
     }
 
-    try {
-      await setDoc(
-        userRef,
-        {
-          isOnline: true,
-          lastActive: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    } catch (error) {
-      console.error("Heartbeat error:", error);
-    }
-  };
+    const userRef = doc(
+      db,
+      "users",
+      currentUser.uid
+    );
 
-  sendHeartbeat();
+    const sendHeartbeat = async () => {
+      if (
+        document.visibilityState !==
+        "visible"
+      ) {
+        return;
+      }
 
-  const heartbeatInterval = setInterval(() => {
+      try {
+        await setDoc(
+          userRef,
+          {
+            isOnline: true,
+            lastActive:
+              serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        console.error(
+          "Heartbeat error:",
+          error
+        );
+      }
+    };
+
     sendHeartbeat();
-  }, 15000);
 
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === "visible") {
-      sendHeartbeat();
-    }
-  };
+    const heartbeatInterval =
+      setInterval(() => {
+        sendHeartbeat();
+      }, 15000);
 
-  document.addEventListener(
-    "visibilitychange",
-    handleVisibilityChange
-  );
+    const handleVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          sendHeartbeat();
+        }
+      };
 
-  return () => {
-    clearInterval(heartbeatInterval);
-
-    document.removeEventListener(
+    document.addEventListener(
       "visibilitychange",
       handleVisibilityChange
     );
-  };
-}, []);
+
+    return () => {
+      clearInterval(
+        heartbeatInterval
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, []);
+
+  // =========================================================
+  // CALL PARTICIPANTS
+  // =========================================================
 
   useEffect(() => {
     if (!callState) {
@@ -825,60 +1144,115 @@ useEffect(() => {
       return;
     }
 
-    const sessionId = sessionIdRef.current;
+    const sessionId =
+      sessionIdRef.current;
 
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
-    const unsubscribe = listenForCallSession(sessionId, (participantUids) => {
-      const mapped = participantUids.map((uid) => {
-        if (uid === auth.currentUser?.uid) {
-          return {
-            uid,
-            name: auth.currentUser.displayName || "You",
-            avatar: auth.currentUser.photoURL || null,
-          };
+    const unsubscribe =
+      listenForCallSession(
+        sessionId,
+        (participantUids) => {
+          const mapped =
+            participantUids.map((uid) => {
+              if (
+                uid ===
+                auth.currentUser?.uid
+              ) {
+                return {
+                  uid,
+                  name:
+                    auth.currentUser
+                      .displayName ||
+                    "You",
+                  avatar:
+                    auth.currentUser
+                      .photoURL ||
+                    null,
+                };
+              }
+
+              return (
+                users.find(
+                  (user) =>
+                    user.uid === uid
+                ) || {
+                  uid,
+                  name: "User",
+                }
+              );
+            });
+
+          setCallParticipants(
+            mapped
+          );
         }
-
-        return users.find((user) => user.uid === uid) || { uid, name: "User" };
-      });
-
-      setCallParticipants(mapped);
-    });
+      );
 
     return () => unsubscribe();
   }, [callState, users]);
 
+  // =========================================================
+  // CLEANUP PEER
+  // =========================================================
+
   const cleanupPeer = (uid) => {
-    const pc = peerConnectionsRef.current[uid];
+    const pc =
+      peerConnectionsRef.current[uid];
 
     if (pc) {
       pc.close();
-      delete peerConnectionsRef.current[uid];
+
+      delete peerConnectionsRef.current[
+        uid
+      ];
     }
 
-    delete callIdsByUidRef.current[uid];
+    delete callIdsByUidRef.current[
+      uid
+    ];
 
     setRemoteStreams((prev) => {
       const next = { ...prev };
+
       delete next[uid];
+
       return next;
     });
 
-    setRingingUids((prev) => prev.filter((id) => id !== uid));
+    setRingingUids((prev) =>
+      prev.filter((id) => id !== uid)
+    );
 
     if (sessionIdRef.current) {
-      leaveCallSession(sessionIdRef.current, uid);
+      leaveCallSession(
+        sessionIdRef.current,
+        uid
+      );
     }
   };
 
+  // =========================================================
+  // CLEANUP CALL
+  // =========================================================
+
   const cleanupCall = () => {
-    Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
+    Object.values(
+      peerConnectionsRef.current
+    ).forEach((pc) => pc.close());
 
     peerConnectionsRef.current = {};
     callIdsByUidRef.current = {};
 
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current
+        .getTracks()
+        .forEach((track) =>
+          track.stop()
+        );
+
       localStreamRef.current = null;
     }
 
@@ -894,18 +1268,46 @@ useEffect(() => {
     setShowParticipants(false);
   };
 
-  const callParticipant = async (user) => {
-    if (!user || !auth.currentUser || !sessionIdRef.current) return;
-    if (peerConnectionsRef.current[user.uid]) return;
+  // =========================================================
+  // CALL PARTICIPANT
+  // =========================================================
 
-    const stream = localStreamRef.current;
+  const callParticipant = async (
+    user
+  ) => {
+    if (
+      !user ||
+      !auth.currentUser ||
+      !sessionIdRef.current
+    ) {
+      return;
+    }
 
-    if (!stream) return;
+    if (
+      peerConnectionsRef.current[
+        user.uid
+      ]
+    ) {
+      return;
+    }
+
+    const stream =
+      localStreamRef.current;
+
+    if (!stream) {
+      return;
+    }
 
     try {
-      setRingingUids((prev) => [...prev, user.uid]);
+      setRingingUids((prev) => [
+        ...prev,
+        user.uid,
+      ]);
 
-      const callRef = doc(collection(db, "calls"));
+      const callRef = doc(
+        collection(db, "calls")
+      );
+
       const newCallId = callRef.id;
 
       const pc = await createCall(
@@ -917,55 +1319,117 @@ useEffect(() => {
         (remoteAudioStream) => {
           setRemoteStreams((prev) => ({
             ...prev,
-            [user.uid]: remoteAudioStream,
+            [user.uid]:
+              remoteAudioStream,
           }));
         }
       );
 
-      peerConnectionsRef.current[user.uid] = pc;
-      callIdsByUidRef.current[user.uid] = newCallId;
+      peerConnectionsRef.current[
+        user.uid
+      ] = pc;
 
-      listenForAnswer(newCallId, pc, async (status) => {
-        if (status === "rejected" || status === "ended") {
-          cleanupPeer(user.uid);
-          return;
+      callIdsByUidRef.current[
+        user.uid
+      ] = newCallId;
+
+      listenForAnswer(
+        newCallId,
+        pc,
+        async (status) => {
+          if (
+            status === "rejected" ||
+            status === "ended"
+          ) {
+            cleanupPeer(user.uid);
+            return;
+          }
+
+          if (status === "connected") {
+            setRingingUids((prev) =>
+              prev.filter(
+                (id) =>
+                  id !== user.uid
+              )
+            );
+
+            await joinCallSession(
+              sessionIdRef.current,
+              user.uid
+            );
+          }
         }
+      );
 
-        if (status === "connected") {
-          setRingingUids((prev) => prev.filter((id) => id !== user.uid));
-          await joinCallSession(sessionIdRef.current, user.uid);
+      listenForReceiverCandidates(
+        newCallId,
+        pc
+      );
+
+      listenForCallStatus(
+        newCallId,
+        (status) => {
+          if (
+            status === "ended" ||
+            status === "rejected"
+          ) {
+            cleanupPeer(user.uid);
+          }
         }
-      });
-
-      listenForReceiverCandidates(newCallId, pc);
-
-      listenForCallStatus(newCallId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupPeer(user.uid);
-        }
-      });
+      );
 
       setShowParticipants(false);
     } catch (error) {
-      console.error("Error calling participant:", error);
+      console.error(
+        "Error calling participant:",
+        error
+      );
+
       cleanupPeer(user.uid);
     }
   };
 
-  const meshConnectToUid = async (uid) => {
-    const targetUser = usersRef.current.find((user) => user.uid === uid);
+  // =========================================================
+  // MESH CONNECT
+  // =========================================================
+
+  const meshConnectToUid = async (
+    uid
+  ) => {
+    const targetUser =
+      usersRef.current.find(
+        (user) => user.uid === uid
+      );
 
     if (targetUser) {
-      await callParticipant(targetUser);
+      await callParticipant(
+        targetUser
+      );
+
       return;
     }
 
-    if (!auth.currentUser || !sessionIdRef.current || !localStreamRef.current)
+    if (
+      !auth.currentUser ||
+      !sessionIdRef.current ||
+      !localStreamRef.current
+    ) {
       return;
-    if (peerConnectionsRef.current[uid]) return;
+    }
+
+    if (
+      peerConnectionsRef.current[
+        uid
+      ]
+    ) {
+      return;
+    }
 
     try {
-      const callRef = doc(collection(db, "calls"));
+      const callRef = doc(
+        collection(db, "calls")
+      );
+
       const newCallId = callRef.id;
 
       const pc = await createCall(
@@ -975,127 +1439,240 @@ useEffect(() => {
         localStreamRef.current,
         sessionIdRef.current,
         (remoteAudioStream) => {
-          setRemoteStreams((prev) => ({ ...prev, [uid]: remoteAudioStream }));
+          setRemoteStreams((prev) => ({
+            ...prev,
+            [uid]: remoteAudioStream,
+          }));
         }
       );
 
-      peerConnectionsRef.current[uid] = pc;
-      callIdsByUidRef.current[uid] = newCallId;
+      peerConnectionsRef.current[
+        uid
+      ] = pc;
 
-      listenForAnswer(newCallId, pc, async (status) => {
-        if (status === "rejected" || status === "ended") {
-          cleanupPeer(uid);
-          return;
+      callIdsByUidRef.current[
+        uid
+      ] = newCallId;
+
+      listenForAnswer(
+        newCallId,
+        pc,
+        async (status) => {
+          if (
+            status === "rejected" ||
+            status === "ended"
+          ) {
+            cleanupPeer(uid);
+            return;
+          }
+
+          if (status === "connected") {
+            await joinCallSession(
+              sessionIdRef.current,
+              uid
+            );
+          }
         }
+      );
 
-        if (status === "connected") {
-          await joinCallSession(sessionIdRef.current, uid);
+      listenForReceiverCandidates(
+        newCallId,
+        pc
+      );
+
+      listenForCallStatus(
+        newCallId,
+        (status) => {
+          if (
+            status === "ended" ||
+            status === "rejected"
+          ) {
+            cleanupPeer(uid);
+          }
         }
-      });
-
-      listenForReceiverCandidates(newCallId, pc);
-
-      listenForCallStatus(newCallId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupPeer(uid);
-        }
-      });
+      );
     } catch (error) {
-      console.error("Error connecting mesh peer:", error);
+      console.error(
+        "Error connecting mesh peer:",
+        error
+      );
     }
   };
 
-  useEffect(() => {
-    const currentUser = auth.currentUser;
+  // =========================================================
+  // INCOMING CALLS
+  // =========================================================
 
-    if (!currentUser) return;
+  useEffect(() => {
+    const currentUser =
+      auth.currentUser;
+
+    if (!currentUser) {
+      return;
+    }
 
     const callsQuery = query(
       collection(db, "calls"),
-      where("receiverId", "==", currentUser.uid),
-      where("status", "==", "calling")
+      where(
+        "receiverId",
+        "==",
+        currentUser.uid
+      ),
+      where(
+        "status",
+        "==",
+        "calling"
+      )
     );
 
     const unsubscribe = onSnapshot(
       callsQuery,
       (snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-          if (change.type !== "added") return;
-
-          const callDoc = change.doc;
-
-          if (processedCallIdsRef.current.has(callDoc.id)) return;
-
-          const callData = callDoc.data();
-
-          if (
-            sessionIdRef.current &&
-            callData.sessionId === sessionIdRef.current
-          ) {
-            processedCallIdsRef.current.add(callDoc.id);
-
-            try {
-              const stream = localStreamRef.current;
-
-              if (!stream) return;
-
-              const { peerConnection: pc } = await acceptCall(
-                callDoc.id,
-                stream,
-                (remoteAudioStream) => {
-                  setRemoteStreams((prev) => ({
-                    ...prev,
-                    [callData.callerId]: remoteAudioStream,
-                  }));
-                }
-              );
-
-              peerConnectionsRef.current[callData.callerId] = pc;
-              callIdsByUidRef.current[callData.callerId] = callDoc.id;
-
-              listenForCallerCandidates(callDoc.id, pc);
-
-              listenForCallStatus(callDoc.id, (status) => {
-                if (status === "ended" || status === "rejected") {
-                  cleanupPeer(callData.callerId);
-                }
-              });
-
-              await joinCallSession(sessionIdRef.current, callData.callerId);
-            } catch (error) {
-              console.error("Error auto-joining mesh call:", error);
+        snapshot.docChanges().forEach(
+          async (change) => {
+            if (change.type !== "added") {
+              return;
             }
 
-            return;
+            const callDoc =
+              change.doc;
+
+            if (
+              processedCallIdsRef.current.has(
+                callDoc.id
+              )
+            ) {
+              return;
+            }
+
+            const callData =
+              callDoc.data();
+
+            if (
+              sessionIdRef.current &&
+              callData.sessionId ===
+                sessionIdRef.current
+            ) {
+              processedCallIdsRef.current.add(
+                callDoc.id
+              );
+
+              try {
+                const stream =
+                  localStreamRef.current;
+
+                if (!stream) {
+                  return;
+                }
+
+                const {
+                  peerConnection: pc,
+                } = await acceptCall(
+                  callDoc.id,
+                  stream,
+                  (
+                    remoteAudioStream
+                  ) => {
+                    setRemoteStreams(
+                      (prev) => ({
+                        ...prev,
+                        [callData.callerId]:
+                          remoteAudioStream,
+                      })
+                    );
+                  }
+                );
+
+                peerConnectionsRef.current[
+                  callData.callerId
+                ] = pc;
+
+                callIdsByUidRef.current[
+                  callData.callerId
+                ] = callDoc.id;
+
+                listenForCallerCandidates(
+                  callDoc.id,
+                  pc
+                );
+
+                listenForCallStatus(
+                  callDoc.id,
+                  (status) => {
+                    if (
+                      status ===
+                        "ended" ||
+                      status ===
+                        "rejected"
+                    ) {
+                      cleanupPeer(
+                        callData.callerId
+                      );
+                    }
+                  }
+                );
+
+                await joinCallSession(
+                  sessionIdRef.current,
+                  callData.callerId
+                );
+              } catch (error) {
+                console.error(
+                  "Error auto-joining mesh call:",
+                  error
+                );
+              }
+
+              return;
+            }
+
+            if (!callState) {
+              const caller =
+                users.find(
+                  (user) =>
+                    user.uid ===
+                    callData.callerId
+                );
+
+              if (!caller) {
+                return;
+              }
+
+              processedCallIdsRef.current.add(
+                callDoc.id
+              );
+
+              setIncomingCall({
+                callId: callDoc.id,
+                caller,
+                sessionId:
+                  callData.sessionId,
+              });
+            }
           }
-
-          if (!callState) {
-            const caller = users.find(
-              (user) => user.uid === callData.callerId
-            );
-
-            if (!caller) return;
-
-            processedCallIdsRef.current.add(callDoc.id);
-
-            setIncomingCall({
-              callId: callDoc.id,
-              caller,
-              sessionId: callData.sessionId,
-            });
-          }
-        });
+        );
       },
       (error) => {
-        console.error("Error listening for incoming calls:", error);
+        console.error(
+          "Error listening for incoming calls:",
+          error
+        );
       }
     );
 
     return () => unsubscribe();
   }, [users, callState]);
 
+  // =========================================================
+  // START CALL
+  // =========================================================
+
   const handleCall = async () => {
-    if (!selectedUser || !auth.currentUser || callState) {
+    if (
+      !selectedUser ||
+      !auth.currentUser ||
+      callState
+    ) {
       return;
     }
 
@@ -1104,16 +1681,24 @@ useEffect(() => {
     }
 
     try {
-      const stream = await getAudioStream();
+      const stream =
+        await getAudioStream();
 
       localStreamRef.current = stream;
       setLocalStream(stream);
 
-      const sessionId = await createCallSession(auth.currentUser.uid);
+      const sessionId =
+        await createCallSession(
+          auth.currentUser.uid
+        );
 
-      sessionIdRef.current = sessionId;
+      sessionIdRef.current =
+        sessionId;
 
-      const callRef = doc(collection(db, "calls"));
+      const callRef = doc(
+        collection(db, "calls")
+      );
+
       const newCallId = callRef.id;
 
       const pc = await createCall(
@@ -1125,87 +1710,156 @@ useEffect(() => {
         (remoteAudioStream) => {
           setRemoteStreams((prev) => ({
             ...prev,
-            [selectedUser.uid]: remoteAudioStream,
+            [selectedUser.uid]:
+              remoteAudioStream,
           }));
         }
       );
 
-      peerConnectionsRef.current[selectedUser.uid] = pc;
-      callIdsByUidRef.current[selectedUser.uid] = newCallId;
+      peerConnectionsRef.current[
+        selectedUser.uid
+      ] = pc;
+
+      callIdsByUidRef.current[
+        selectedUser.uid
+      ] = newCallId;
 
       setCallState("calling");
       setPeerConnection(pc);
 
-      listenForAnswer(newCallId, pc, async (status) => {
-        if (status === "rejected" || status === "ended") {
-          cleanupCall();
-          return;
-        }
+      listenForAnswer(
+        newCallId,
+        pc,
+        async (status) => {
+          if (
+            status === "rejected" ||
+            status === "ended"
+          ) {
+            cleanupCall();
+            return;
+          }
 
-        if (status === "connected") {
-          setCallState("connected");
-          await joinCallSession(sessionId, selectedUser.uid);
-        }
-      });
+          if (status === "connected") {
+            setCallState(
+              "connected"
+            );
 
-      listenForReceiverCandidates(newCallId, pc);
-
-      listenForCallStatus(newCallId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupCall();
-          setIncomingCall(null);
+            await joinCallSession(
+              sessionId,
+              selectedUser.uid
+            );
+          }
         }
-      });
+      );
+
+      listenForReceiverCandidates(
+        newCallId,
+        pc
+      );
+
+      listenForCallStatus(
+        newCallId,
+        (status) => {
+          if (
+            status === "ended" ||
+            status === "rejected"
+          ) {
+            cleanupCall();
+            setIncomingCall(null);
+          }
+        }
+      );
     } catch (error) {
-      console.error("Error starting call:", error);
+      console.error(
+        "Error starting call:",
+        error
+      );
+
       cleanupCall();
     }
   };
 
+  // =========================================================
+  // ACCEPT CALL
+  // =========================================================
+
   const handleAcceptCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall) {
+      return;
+    }
 
     try {
-      const stream = await getAudioStream();
+      const stream =
+        await getAudioStream();
 
       localStreamRef.current = stream;
       setLocalStream(stream);
-      sessionIdRef.current = incomingCall.sessionId;
 
-      const { peerConnection: pc } = await acceptCall(
+      sessionIdRef.current =
+        incomingCall.sessionId;
+
+      const {
+        peerConnection: pc,
+      } = await acceptCall(
         incomingCall.callId,
         stream,
         (remoteAudioStream) => {
           setRemoteStreams((prev) => ({
             ...prev,
-            [incomingCall.caller.uid]: remoteAudioStream,
+            [incomingCall.caller.uid]:
+              remoteAudioStream,
           }));
         }
       );
 
-      peerConnectionsRef.current[incomingCall.caller.uid] = pc;
-      callIdsByUidRef.current[incomingCall.caller.uid] = incomingCall.callId;
+      peerConnectionsRef.current[
+        incomingCall.caller.uid
+      ] = pc;
+
+      callIdsByUidRef.current[
+        incomingCall.caller.uid
+      ] = incomingCall.callId;
 
       setCallState("connected");
       setPeerConnection(pc);
 
-      listenForCallerCandidates(incomingCall.callId, pc);
+      listenForCallerCandidates(
+        incomingCall.callId,
+        pc
+      );
 
-      listenForCallStatus(incomingCall.callId, (status) => {
-        if (status === "ended" || status === "rejected") {
-          cleanupPeer(incomingCall.caller.uid);
+      listenForCallStatus(
+        incomingCall.callId,
+        (status) => {
+          if (
+            status === "ended" ||
+            status === "rejected"
+          ) {
+            cleanupPeer(
+              incomingCall.caller.uid
+            );
+          }
         }
-      });
-
-      await joinCallSession(incomingCall.sessionId, auth.currentUser.uid);
-
-      const participants = await getCallSessionParticipants(
-        incomingCall.sessionId
       );
 
-      const others = participants.filter(
-        (uid) => uid !== auth.currentUser.uid && uid !== incomingCall.caller.uid
+      await joinCallSession(
+        incomingCall.sessionId,
+        auth.currentUser.uid
       );
+
+      const participants =
+        await getCallSessionParticipants(
+          incomingCall.sessionId
+        );
+
+      const others =
+        participants.filter(
+          (uid) =>
+            uid !==
+              auth.currentUser.uid &&
+            uid !==
+              incomingCall.caller.uid
+        );
 
       for (const uid of others) {
         await meshConnectToUid(uid);
@@ -1213,53 +1867,102 @@ useEffect(() => {
 
       setIncomingCall(null);
     } catch (error) {
-      console.error("Error accepting call:", error);
+      console.error(
+        "Error accepting call:",
+        error
+      );
     }
   };
+
+  // =========================================================
+  // REJECT CALL
+  // =========================================================
 
   const handleRejectCall = async () => {
-    if (!incomingCall) return;
+    if (!incomingCall) {
+      return;
+    }
 
     try {
-      await rejectCall(incomingCall.callId);
+      await rejectCall(
+        incomingCall.callId
+      );
+
       setIncomingCall(null);
     } catch (error) {
-      console.error("Error rejecting call:", error);
+      console.error(
+        "Error rejecting call:",
+        error
+      );
     }
   };
 
+  // =========================================================
+  // END CALL
+  // =========================================================
+
   const handleEndCall = async () => {
-    const uids = Object.keys(callIdsByUidRef.current);
+    const uids = Object.keys(
+      callIdsByUidRef.current
+    );
 
     try {
       for (const uid of uids) {
-        const id = callIdsByUidRef.current[uid];
+        const id =
+          callIdsByUidRef.current[uid];
 
         if (id) {
           await endCall(id);
         }
       }
 
-      if (sessionIdRef.current && auth.currentUser) {
-        await leaveCallSession(sessionIdRef.current, auth.currentUser.uid);
+      if (
+        sessionIdRef.current &&
+        auth.currentUser
+      ) {
+        await leaveCallSession(
+          sessionIdRef.current,
+          auth.currentUser.uid
+        );
       }
     } catch (error) {
-      console.error("Error ending call:", error);
+      console.error(
+        "Error ending call:",
+        error
+      );
     }
 
     cleanupCall();
     setIncomingCall(null);
   };
 
-  const availableParticipants = users.filter((user) => {
-    const alreadyInCall = callParticipants.some(
-      (participant) => participant.uid === user.uid
-    );
+  // =========================================================
+  // AVAILABLE CALL PARTICIPANTS
+  // =========================================================
 
-    const alreadyRinging = ringingUids.includes(user.uid);
+  const availableParticipants =
+    users.filter((user) => {
+      const alreadyInCall =
+        callParticipants.some(
+          (participant) =>
+            participant.uid ===
+            user.uid
+        );
 
-    return !alreadyInCall && !alreadyRinging;
-  });
+      const alreadyRinging =
+        ringingUids.includes(
+          user.uid
+        );
+
+      return (
+        !alreadyInCall &&
+        !alreadyRinging
+      );
+    });
+
+  // =========================================================
+  // RETURN
+  // =========================================================
 
   return (
     <div className="container">
@@ -1273,18 +1976,24 @@ useEffect(() => {
         <Chatlist
           users={users}
           groups={groups}
-onSelectUser={(user) => {
-  setSelectedUser(user);
+          onSelectUser={(user) => {
+            setSelectedUser(user);
 
-  if (user.isGroup) {
-    navigate(`/chat/${user.id}`);
-  } else {
-    navigate(`/chat/${user.uid}`);
-  }
-}}          previews={previews}
+            if (user.isGroup) {
+              navigate(
+                `/chat/${user.id}`
+              );
+            } else {
+              navigate(
+                `/chat/${user.uid}`
+              );
+            }
+          }}
+          previews={previews}
           groupPreviews={groupPreviews}
           searchTerm={searchTerm}
           unreadCounts={unreadCounts}
+          contactNames={contactNames}
         />
       </div>
 
@@ -1295,43 +2004,77 @@ onSelectUser={(user) => {
           onSend={handleSend}
           onCall={handleCall}
           users={users}
-          onExitGroup={() => setSelectedUser(null)}
-          onLoadOlder={loadOlderMessages}
+          onExitGroup={() =>
+            setSelectedUser(null)
+          }
+          onLoadOlder={
+            loadOlderMessages
+          }
           loadingOlder={loadingOlder}
-          hasMoreMessages={hasMoreMessages}
+          hasMoreMessages={
+            hasMoreMessages
+          }
         />
       </div>
 
-      {callState && selectedUser && (
-        <CallModal
-          selectedUser={selectedUser}
-          callState={callState}
-          onEndCall={handleEndCall}
-          isSpeaking={isSpeaking}
-          users={availableParticipants}
-          callParticipants={callParticipants}
-          ringingUids={ringingUids}
-          showParticipants={showParticipants}
-          setShowParticipants={setShowParticipants}
-          onAddParticipant={callParticipant}
-        />
-      )}
+      {callState &&
+        selectedUser && (
+          <CallModal
+            selectedUser={
+              selectedUser
+            }
+            callState={callState}
+            onEndCall={
+              handleEndCall
+            }
+            isSpeaking={
+              isSpeaking
+            }
+            users={
+              availableParticipants
+            }
+            callParticipants={
+              callParticipants
+            }
+            ringingUids={
+              ringingUids
+            }
+            showParticipants={
+              showParticipants
+            }
+            setShowParticipants={
+              setShowParticipants
+            }
+            onAddParticipant={
+              callParticipant
+            }
+          />
+        )}
 
       {incomingCall && (
         <IncomingCall
-          caller={incomingCall.caller}
-          onAccept={handleAcceptCall}
-          onReject={handleRejectCall}
+          caller={
+            incomingCall.caller
+          }
+          onAccept={
+            handleAcceptCall
+          }
+          onReject={
+            handleRejectCall
+          }
         />
       )}
 
-      {Object.entries(remoteStreams).map(([uid, stream]) => (
+      {Object.entries(
+        remoteStreams
+      ).map(([uid, stream]) => (
         <audio
           key={uid}
           autoPlay
           ref={(audio) => {
             if (audio) {
-              audio.srcObject = stream;
+              audio.srcObject =
+                stream;
             }
           }}
         />
