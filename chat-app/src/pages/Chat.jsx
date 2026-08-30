@@ -13,7 +13,10 @@ import {
   limitToLast,
   endBefore,
   getDocs,
+  getDoc,
 } from "firebase/firestore";
+
+import { onAuthStateChanged } from "firebase/auth";
 
 import { Navbar } from "../components/Navbar";
 import { ChatWindow } from "../components/ChatWindow";
@@ -41,12 +44,13 @@ export function Chat() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
 
- const oldestMessageRef = useRef(null);
+  const oldestMessageRef = useRef(null);
+  const usersRef = useRef([]);
+
   const [previews, setPreviews] = useState({});
   const [groups, setGroups] = useState([]);
   const [groupPreviews, setGroupPreviews] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
-
   const [unreadCounts, setUnreadCounts] = useState({});
 
   const [callId, setCallId] = useState(null);
@@ -67,7 +71,12 @@ export function Chat() {
       return;
     }
 
-    const audioContext = new AudioContext();
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) return;
+
+    const audioContext = new AudioContextClass();
     const analyser = audioContext.createAnalyser();
 
     analyser.fftSize = 256;
@@ -78,7 +87,7 @@ export function Chat() {
     source.connect(analyser);
 
     const dataArray = new Uint8Array(
-      analyser.frequencyBinCount,
+      analyser.frequencyBinCount
     );
 
     let animationFrame;
@@ -119,213 +128,523 @@ export function Chat() {
 
             return {
               id: userDoc.id,
-             
               uid: userData.uid || userDoc.id,
-             
               ...userData,
             };
           })
           .filter(
             (user) =>
               user.id !== auth.currentUser?.uid &&
-              
+              user.uid !== auth.currentUser?.uid &&
               user.name
-              
           );
 
         setUsers(usersData);
+        usersRef.current = usersData;
       },
       (error) => {
         console.error("Error getting users:", error);
-      },
+      }
     );
 
     return () => unsubscribe();
   }, []);
 
-
-
-  // ضيف هاد الـ effect الجديد بملف Chat.jsx (مستقل تمامًا عن selectedUser)
-  // effect مستقل: يبني previews + unreadCounts معًا من كل رسائلي
-useEffect(() => {
-  
-  const currentUser = auth.currentUser;
-
-  if (!currentUser) return;
-
-  const currentUserId = currentUser.uid;
-
-  const previewsQuery = query(
-    collection(db, "messages"),
-    where("participants", "array-contains", currentUserId),
-    orderBy("createdAt", "asc"),
-  );
-
-  const unsubscribe = onSnapshot(
-    previewsQuery,
-    (snapshot) => {
-      const latestMessagesMap = {};
-      const unreadMap = {};
-
-      snapshot.docs.forEach((messageDoc) => {
-        const message = messageDoc.data();
-
-        const otherId =
-          message.senderId === currentUserId
-            ? message.receiverId
-            : message.senderId;
-
-        if (otherId) {
-          latestMessagesMap[otherId] = {
-            id: messageDoc.id,
-            ...message,
-          };
-        }
-
-        if (
-          message.receiverId === currentUserId &&
-          message.senderId &&
-          !message.read
-        ) {
-          unreadMap[message.senderId] =
-            (unreadMap[message.senderId] || 0) + 1;
-        }
-      });
-
-      setPreviews(latestMessagesMap);
-      setUnreadCounts(unreadMap);
-    },
-    (error) => {
-      console.error("Error getting previews:", error);
-    },
-  );
-  
-
-  return () => unsubscribe();
-}, []);
   useEffect(() => {
-  if (!auth.currentUser) return;
+    if (!("Notification" in window)) {
+      console.log("❌ Browser notifications are not supported");
+      return;
+    }
 
-  if (!selectedUser || selectedUser.isGroup) return;
+    console.log(
+      "🔔 Current notification permission:",
+      Notification.permission
+    );
 
-  const currentUserId = auth.currentUser.uid;
-  const otherUserId = selectedUser.uid;
+    if (Notification.permission === "default") {
+      Notification.requestPermission()
+        .then((permission) => {
+          console.log(
+            "🔐 Notification permission:",
+            permission
+          );
+        })
+        .catch((error) => {
+          console.error(
+            "❌ Notification permission error:",
+            error
+          );
+        });
+    }
+  }, []);
 
-  setMessages([]);
-  setLoadingOlder(false);
-  setHasMoreMessages(true);
-  oldestMessageRef.current = null;
+  useEffect(() => {
+    if (!("Notification" in window)) {
+      return;
+    }
 
-  const messageQuery = query(
-    collection(db, "messages"),
-    where("participants", "array-contains", currentUserId),
-    orderBy("createdAt", "asc"),
-    limitToLast(10),
-  );
+    let unsubscribeMessages = null;
 
-  const unsubscribe = onSnapshot(
-    messageQuery,
-    (snapshot) => {
-      const latestMessages = snapshot.docs.map(
-        (messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }),
-      );
+    const unsubscribeAuth = onAuthStateChanged(
+      auth,
+      async (currentUser) => {
+        if (!currentUser) {
+          console.log(
+            "❌ No authenticated user for notifications"
+          );
 
-      const allMessagesForPreviews =
-        snapshot.docs.map((messageDoc) => ({
-          id: messageDoc.id,
-          ...messageDoc.data(),
-        }));
+          if (unsubscribeMessages) {
+            unsubscribeMessages();
+            unsubscribeMessages = null;
+          }
 
-      if (snapshot.docs.length > 0) {
-        oldestMessageRef.current =
-          snapshot.docs[0];
-      }
+          return;
+        }
 
-      if (snapshot.docs.length < 10) {
-        setHasMoreMessages(false);
-      }
-
-      const selectedMessages =
-        latestMessages.filter(
-          (message) =>
-            (message.senderId === currentUserId &&
-              message.receiverId === otherUserId) ||
-            (message.senderId === otherUserId &&
-              message.receiverId === currentUserId),
+        console.log(
+          "✅ Authenticated user:",
+          currentUser.uid
         );
 
-      setMessages(selectedMessages);
+        if (Notification.permission === "default") {
+          try {
+            const permission =
+              await Notification.requestPermission();
 
-      const latestMessagesMap = {};
-
-      allMessagesForPreviews.forEach((message) => {
-        const otherId =
-          message.senderId === currentUserId
-            ? message.receiverId
-            : message.senderId;
-
-        if (otherId) {
-          latestMessagesMap[otherId] = message;
-        }
-      });
-
-      setPreviews((prev) => ({
-        ...prev,
-        ...latestMessagesMap,
-      }));
-
-      selectedMessages.forEach((message) => {
-        if (
-          message.receiverId === currentUserId &&
-          message.senderId === otherUserId &&
-          !message.read
-        ) {
-          updateDoc(
-            doc(db, "messages", message.id),
-            {
-              read: true,
-              readAt: serverTimestamp(),
-            },
-          ).catch((error) => {
-            console.error(
-              "Error marking message read:",
-              error,
+            console.log(
+              "🔐 Notification permission:",
+              permission
             );
-          });
-        }
-
-        if (
-          message.receiverId === currentUserId &&
-          !message.delivered
-        ) {
-          updateDoc(
-            doc(db, "messages", message.id),
-            {
-              delivered: true,
-              deliveredAt: serverTimestamp(),
-            },
-          ).catch((error) => {
+          } catch (error) {
             console.error(
-              "Error marking message delivered:",
-              error,
+              "❌ Permission request failed:",
+              error
             );
-          });
+          }
         }
-      });
-    },
-    (error) => {
-      console.error(
-        "Error getting messages:",
-        error,
-      );
-    },
-  );
 
-  return () => unsubscribe();
-}, [selectedUser]);
+        if (Notification.permission !== "granted") {
+          console.log(
+            "❌ Notification permission is not granted:",
+            Notification.permission
+          );
+          return;
+        }
+
+        const messagesQuery = query(
+          collection(db, "messages"),
+          where(
+            "receiverId",
+            "==",
+            currentUser.uid
+          )
+        );
+
+        console.log(
+          "🔔 Starting notification listener..."
+        );
+
+        let initialized = false;
+
+        unsubscribeMessages = onSnapshot(
+          messagesQuery,
+          async (snapshot) => {
+            console.log(
+              "📩 Notification snapshot:",
+              snapshot.docChanges().length
+            );
+
+            if (!initialized) {
+              initialized = true;
+
+              console.log(
+                "✅ Existing messages loaded. No notifications for old messages."
+              );
+
+              return;
+            }
+
+            for (const change of snapshot.docChanges()) {
+              if (change.type !== "added") {
+                continue;
+              }
+
+              const message = change.doc.data();
+
+              console.log(
+                "📨 NEW MESSAGE DETECTED:",
+                message
+              );
+
+              if (
+                message.senderId ===
+                currentUser.uid
+              ) {
+                console.log(
+                  "⏭️ Message belongs to current user"
+                );
+
+                continue;
+              }
+
+              let senderName = "New message";
+
+              const localSender =
+                usersRef.current.find(
+                  (user) =>
+                    user.uid ===
+                    message.senderId
+                );
+
+              if (localSender?.name) {
+                senderName = localSender.name;
+              } else if (message.senderId) {
+                try {
+                  const senderRef = doc(
+                    db,
+                    "users",
+                    message.senderId
+                  );
+
+                  const senderSnapshot =
+                    await getDoc(senderRef);
+
+                  if (senderSnapshot.exists()) {
+                    const senderData =
+                      senderSnapshot.data();
+
+                    senderName =
+                      senderData.name ||
+                      senderData.displayName ||
+                      senderData.username ||
+                      "New message";
+                  }
+                } catch (error) {
+                  console.error(
+                    "❌ Error getting sender:",
+                    error
+                  );
+                }
+              }
+
+              let body = "";
+
+              if (
+                typeof message.text === "string" &&
+                message.text.trim()
+              ) {
+                body = message.text.trim();
+              } else if (message.imageUrl) {
+                body = "📷 Photo";
+              } else if (message.fileUrl) {
+                body = `📎 ${
+                  message.fileName || "File"
+                }`;
+              } else {
+                body = "New message";
+              }
+
+              console.log(
+                "👤 Sender:",
+                senderName
+              );
+
+              console.log(
+                "💬 Notification body:",
+                body
+              );
+
+              console.log(
+                "🚨 Creating browser notification..."
+              );
+
+              try {
+                const notification =
+                  new Notification(
+                    senderName,
+                    {
+                      body,
+                      icon: "/favicon.ico",
+                      badge: "/favicon.ico",
+                      tag: `chat-message-${change.doc.id}`,
+                      requireInteraction: false,
+                    }
+                  );
+
+                notification.onclick = () => {
+                  window.focus();
+
+                  notification.close();
+
+                  const sender =
+                    usersRef.current.find(
+                      (user) =>
+                        user.uid ===
+                        message.senderId
+                    );
+
+                  if (sender) {
+                    setSelectedUser(sender);
+                  }
+                };
+
+                notification.onshow = () => {
+                  console.log(
+                    "✅ NOTIFICATION SHOWED"
+                  );
+                };
+
+                notification.onerror = (error) => {
+                  console.error(
+                    "❌ NOTIFICATION ERROR:",
+                    error
+                  );
+                };
+
+                notification.onclose = () => {
+                  console.log(
+                    "🔕 Notification closed"
+                  );
+                };
+
+                console.log(
+                  "✅ Notification object created successfully"
+                );
+              } catch (error) {
+                console.error(
+                  "❌ FAILED TO CREATE NOTIFICATION:",
+                  error
+                );
+              }
+            }
+          },
+          (error) => {
+            console.error(
+              "❌ Notification listener error:",
+              error
+            );
+          }
+        );
+      }
+    );
+
+    return () => {
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+      }
+
+      unsubscribeAuth();
+    };
+  }, []);
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) return;
+
+    const previewsQuery = query(
+      collection(db, "messages"),
+      where(
+        "participants",
+        "array-contains",
+        currentUser.uid
+      ),
+      orderBy("createdAt", "asc")
+    );
+
+    const unsubscribe = onSnapshot(
+      previewsQuery,
+      (snapshot) => {
+        const latestMessagesMap = {};
+        const unreadMap = {};
+
+        snapshot.docs.forEach((messageDoc) => {
+          const message = messageDoc.data();
+
+          const otherId =
+            message.senderId === currentUser.uid
+              ? message.receiverId
+              : message.senderId;
+
+          if (otherId) {
+            latestMessagesMap[otherId] = {
+              id: messageDoc.id,
+              ...message,
+            };
+          }
+
+          if (
+            message.receiverId ===
+              currentUser.uid &&
+            message.senderId &&
+            !message.read
+          ) {
+            unreadMap[message.senderId] =
+              (unreadMap[message.senderId] || 0) + 1;
+          }
+        });
+
+        setPreviews(latestMessagesMap);
+        setUnreadCounts(unreadMap);
+      },
+      (error) => {
+        console.error(
+          "Error getting previews:",
+          error
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    if (!selectedUser || selectedUser.isGroup) {
+      return;
+    }
+
+    const currentUserId =
+      auth.currentUser.uid;
+
+    const otherUserId =
+      selectedUser.uid;
+
+    setMessages([]);
+    setLoadingOlder(false);
+    setHasMoreMessages(true);
+    oldestMessageRef.current = null;
+
+    const messageQuery = query(
+      collection(db, "messages"),
+      where(
+        "participants",
+        "array-contains",
+        currentUserId
+      ),
+      orderBy("createdAt", "asc"),
+      limitToLast(10)
+    );
+
+    const unsubscribe = onSnapshot(
+      messageQuery,
+      (snapshot) => {
+        const latestMessages =
+          snapshot.docs.map(
+            (messageDoc) => ({
+              id: messageDoc.id,
+              ...messageDoc.data(),
+            })
+          );
+
+        if (snapshot.docs.length > 0) {
+          oldestMessageRef.current =
+            snapshot.docs[0];
+        }
+
+        if (snapshot.docs.length < 10) {
+          setHasMoreMessages(false);
+        }
+
+        const selectedMessages =
+          latestMessages.filter(
+            (message) =>
+              (message.senderId ===
+                currentUserId &&
+                message.receiverId ===
+                  otherUserId) ||
+              (message.senderId ===
+                otherUserId &&
+                message.receiverId ===
+                  currentUserId)
+          );
+
+        setMessages(selectedMessages);
+
+        const latestMessagesMap = {};
+
+        latestMessages.forEach((message) => {
+          const otherId =
+            message.senderId === currentUserId
+              ? message.receiverId
+              : message.senderId;
+
+          if (otherId) {
+            latestMessagesMap[otherId] =
+              message;
+          }
+        });
+
+        setPreviews((prev) => ({
+          ...prev,
+          ...latestMessagesMap,
+        }));
+
+        selectedMessages.forEach(
+          (message) => {
+            if (
+              message.receiverId ===
+                currentUserId &&
+              message.senderId ===
+                otherUserId &&
+              !message.read
+            ) {
+              updateDoc(
+                doc(
+                  db,
+                  "messages",
+                  message.id
+                ),
+                {
+                  read: true,
+                  readAt:
+                    serverTimestamp(),
+                }
+              ).catch((error) => {
+                console.error(
+                  "Error marking message read:",
+                  error
+                );
+              });
+            }
+
+            if (
+              message.receiverId ===
+                currentUserId &&
+              !message.delivered
+            ) {
+              updateDoc(
+                doc(
+                  db,
+                  "messages",
+                  message.id
+                ),
+                {
+                  delivered: true,
+                  deliveredAt:
+                    serverTimestamp(),
+                }
+              ).catch((error) => {
+                console.error(
+                  "Error marking message delivered:",
+                  error
+                );
+              });
+            }
+          }
+        );
+      },
+      (error) => {
+        console.error(
+          "Error getting messages:",
+          error
+        );
+      }
+    );
+
+    return () => unsubscribe();
+  }, [selectedUser]);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -334,24 +653,34 @@ useEffect(() => {
 
     const groupsQuery = query(
       collection(db, "groups"),
-      where("members", "array-contains", currentUser.uid),
+      where(
+        "members",
+        "array-contains",
+        currentUser.uid
+      )
     );
 
     const unsubscribe = onSnapshot(
       groupsQuery,
       (snapshot) => {
-        const groupsData = snapshot.docs.map((groupDoc) => ({
-          id: groupDoc.id,
-          uid: groupDoc.id,
-          isGroup: true,
-          ...groupDoc.data(),
-        }));
+        const groupsData =
+          snapshot.docs.map(
+            (groupDoc) => ({
+              id: groupDoc.id,
+              uid: groupDoc.id,
+              isGroup: true,
+              ...groupDoc.data(),
+            })
+          );
 
         setGroups(groupsData);
       },
       (error) => {
-        console.error("Error getting groups:", error);
-      },
+        console.error(
+          "Error getting groups:",
+          error
+        );
+      }
     );
 
     return () => unsubscribe();
@@ -360,9 +689,14 @@ useEffect(() => {
   useEffect(() => {
     if (!selectedUser?.isGroup) return;
 
-    const updatedGroup = groups.find((g) => g.id === selectedUser.id);
+    const updatedGroup = groups.find(
+      (g) => g.id === selectedUser.id
+    );
 
-    if (updatedGroup && updatedGroup !== selectedUser) {
+    if (
+      updatedGroup &&
+      updatedGroup !== selectedUser
+    ) {
       setSelectedUser(updatedGroup);
     }
   }, [groups, selectedUser]);
@@ -373,12 +707,18 @@ useEffect(() => {
       return;
     }
 
-    const groupIds = groups.map((g) => g.id).slice(0, 10);
+    const groupIds = groups
+      .map((g) => g.id)
+      .slice(0, 10);
 
     const previewQuery = query(
       collection(db, "messages"),
-      where("groupId", "in", groupIds),
-      orderBy("createdAt", "asc"),
+      where(
+        "groupId",
+        "in",
+        groupIds
+      ),
+      orderBy("createdAt", "asc")
     );
 
     const unsubscribe = onSnapshot(
@@ -386,20 +726,26 @@ useEffect(() => {
       (snapshot) => {
         const latest = {};
 
-        snapshot.docs.forEach((messageDoc) => {
-          const data = messageDoc.data();
+        snapshot.docs.forEach(
+          (messageDoc) => {
+            const data =
+              messageDoc.data();
 
-          latest[data.groupId] = {
-            id: messageDoc.id,
-            ...data,
-          };
-        });
+            latest[data.groupId] = {
+              id: messageDoc.id,
+              ...data,
+            };
+          }
+        );
 
         setGroupPreviews(latest);
       },
       (error) => {
-        console.error("Error getting group previews:", error);
-      },
+        console.error(
+          "Error getting group previews:",
+          error
+        );
+      }
     );
 
     return () => unsubscribe();
@@ -408,236 +754,265 @@ useEffect(() => {
   useEffect(() => {
     if (!selectedUser?.isGroup) return;
 
-    const groupMessagesQuery = query(
-      collection(db, "messages"),
-      where("groupId", "==", selectedUser.id),
-      orderBy("createdAt", "asc"),
-    );
+    const groupMessagesQuery =
+      query(
+        collection(db, "messages"),
+        where(
+          "groupId",
+          "==",
+          selectedUser.id
+        ),
+        orderBy("createdAt", "asc")
+      );
 
     const unsubscribe = onSnapshot(
       groupMessagesQuery,
       (snapshot) => {
-        const groupMessages = snapshot.docs.map(
-          (messageDoc) => ({
-            id: messageDoc.id,
-            ...messageDoc.data(),
-          }),
-        );
+        const groupMessages =
+          snapshot.docs.map(
+            (messageDoc) => ({
+              id: messageDoc.id,
+              ...messageDoc.data(),
+            })
+          );
 
         setMessages(groupMessages);
       },
       (error) => {
         console.error(
           "Error getting group messages:",
-          error,
+          error
         );
-      },
+      }
     );
 
     return () => unsubscribe();
   }, [selectedUser]);
 
-
-const loadOlderMessages = async () => {
-  if (
-    loadingOlder ||
-    !hasMoreMessages ||
-    !selectedUser ||
-    !oldestMessageRef.current
-  ) {
-    return;
-  }
-
-  try {
-    setLoadingOlder(true);
-
-    const currentUserId = auth.currentUser.uid;
-
-    let olderQuery;
-
-    if (selectedUser.isGroup) {
-      olderQuery = query(
-        collection(db, "messages"),
-        where("groupId", "==", selectedUser.id),
-        orderBy("createdAt", "asc"),
-        endBefore(oldestMessageRef.current),
-        limitToLast(10),
-      );
-    } else {
-      olderQuery = query(
-        collection(db, "messages"),
-        where(
-          "participants",
-          "array-contains",
-          currentUserId,
-        ),
-        orderBy("createdAt", "asc"),
-        endBefore(oldestMessageRef.current),
-        limitToLast(10),
-      );
-    }
-
-    const snapshot = await getDocs(olderQuery);
-
-    if (snapshot.empty) {
-      setHasMoreMessages(false);
+  const loadOlderMessages = async () => {
+    if (
+      loadingOlder ||
+      !hasMoreMessages ||
+      !selectedUser ||
+      !oldestMessageRef.current
+    ) {
       return;
     }
 
-    const olderMessages = snapshot.docs.map(
-      (messageDoc) => ({
-        id: messageDoc.id,
-        ...messageDoc.data(),
-      }),
-    );
+    try {
+      setLoadingOlder(true);
 
-    oldestMessageRef.current =
-      snapshot.docs[0];
+      const currentUserId =
+        auth.currentUser.uid;
 
-    if (snapshot.docs.length < 10) {
-      setHasMoreMessages(false);
-    }
+      let olderQuery;
 
-    if (selectedUser.isGroup) {
-      setMessages((prev) => [
-        ...olderMessages,
-        ...prev,
-      ]);
-    } else {
-      const filteredOlderMessages =
-        olderMessages.filter(
-          (message) =>
-            (message.senderId === currentUserId &&
-              message.receiverId ===
-                selectedUser.uid) ||
-            (message.senderId ===
-              selectedUser.uid &&
-              message.receiverId ===
-                currentUserId),
+      if (selectedUser.isGroup) {
+        olderQuery = query(
+          collection(db, "messages"),
+          where(
+            "groupId",
+            "==",
+            selectedUser.id
+          ),
+          orderBy("createdAt", "asc"),
+          endBefore(
+            oldestMessageRef.current
+          ),
+          limitToLast(10)
+        );
+      } else {
+        olderQuery = query(
+          collection(db, "messages"),
+          where(
+            "participants",
+            "array-contains",
+            currentUserId
+          ),
+          orderBy("createdAt", "asc"),
+          endBefore(
+            oldestMessageRef.current
+          ),
+          limitToLast(10)
+        );
+      }
+
+      const snapshot =
+        await getDocs(olderQuery);
+
+      if (snapshot.empty) {
+        setHasMoreMessages(false);
+        return;
+      }
+
+      const olderMessages =
+        snapshot.docs.map(
+          (messageDoc) => ({
+            id: messageDoc.id,
+            ...messageDoc.data(),
+          })
         );
 
-      setMessages((prev) => [
-        ...filteredOlderMessages,
-        ...prev,
-      ]);
-    }
-  } catch (error) {
-    console.error(
-      "Error loading older messages:",
-      error,
-    );
-  } finally {
-    setLoadingOlder(false);
-  }
-};
+      oldestMessageRef.current =
+        snapshot.docs[0];
 
-
-const handleSend = async (message, replyTo) => {
-  if (!selectedUser || !auth.currentUser) {
-    return;
-  }
-
-  const isAttachment =
-    typeof message === "object" && message !== null;
-
-  const text = isAttachment
-    ? message.text || ""
-    : message;
-
-  const imageUrl = isAttachment
-    ? message.imageUrl || null
-    : null;
-
-  const fileUrl = isAttachment
-    ? message.fileUrl || null
-    : null;
-
-  const fileName = isAttachment
-    ? message.fileName || null
-    : null;
-
-  const fileType = isAttachment
-    ? message.fileType || null
-    : null;
-
-  const fileSize = isAttachment
-    ? message.fileSize || null
-    : null;
-
-  if (
-    !text?.trim() &&
-    !imageUrl &&
-    !fileUrl
-  ) {
-    return;
-  }
-
-  const replyToData = replyTo
-    ? {
-        id: replyTo.id,
-        text: replyTo.text || "",
-        senderId: replyTo.senderId,
+      if (snapshot.docs.length < 10) {
+        setHasMoreMessages(false);
       }
-    : null;
 
-  try {
-    if (selectedUser.isGroup) {
-      await addDoc(collection(db, "messages"), {
-        text: text?.trim() || "",
+      if (selectedUser.isGroup) {
+        setMessages((prev) => [
+          ...olderMessages,
+          ...prev,
+        ]);
+      } else {
+        const filteredOlderMessages =
+          olderMessages.filter(
+            (message) =>
+              (message.senderId ===
+                currentUserId &&
+                message.receiverId ===
+                  selectedUser.uid) ||
+              (message.senderId ===
+                selectedUser.uid &&
+                message.receiverId ===
+                  currentUserId)
+          );
 
-        imageUrl,
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize,
-
-        senderId: auth.currentUser.uid,
-        groupId: selectedUser.id,
-        isGroup: true,
-
-        createdAt: serverTimestamp(),
-
-        replyTo: replyToData,
-      });
-    } else {
-      await addDoc(collection(db, "messages"), {
-        text: text?.trim() || "",
-
-        imageUrl,
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize,
-
-        senderId: auth.currentUser.uid,
-        receiverId: selectedUser.uid,
-
-        participants: [
-          auth.currentUser.uid,
-          selectedUser.uid,
-        ],
-
-        createdAt: serverTimestamp(),
-
-        delivered: false,
-        read: false,
-
-        replyTo: replyToData,
-      });
+        setMessages((prev) => [
+          ...filteredOlderMessages,
+          ...prev,
+        ]);
+      }
+    } catch (error) {
+      console.error(
+        "Error loading older messages:",
+        error
+      );
+    } finally {
+      setLoadingOlder(false);
     }
-  } catch (error) {
-    console.error(
-      "Error sending message:",
-      error,
-    );
-  }
-};
+  };
+
+  const handleSend = async (
+    message,
+    replyTo
+  ) => {
+    if (
+      !selectedUser ||
+      !auth.currentUser
+    ) {
+      return;
+    }
+
+    const isAttachment =
+      typeof message === "object" &&
+      message !== null;
+
+    const text = isAttachment
+      ? message.text || ""
+      : message;
+
+    const imageUrl = isAttachment
+      ? message.imageUrl || null
+      : null;
+
+    const fileUrl = isAttachment
+      ? message.fileUrl || null
+      : null;
+
+    const fileName = isAttachment
+      ? message.fileName || null
+      : null;
+
+    const fileType = isAttachment
+      ? message.fileType || null
+      : null;
+
+    const fileSize = isAttachment
+      ? message.fileSize || null
+      : null;
+
+    if (
+      !text?.trim() &&
+      !imageUrl &&
+      !fileUrl
+    ) {
+      return;
+    }
+
+    const replyToData = replyTo
+      ? {
+          id: replyTo.id,
+          text: replyTo.text || "",
+          senderId: replyTo.senderId,
+        }
+      : null;
+
+    try {
+      if (selectedUser.isGroup) {
+        await addDoc(
+          collection(db, "messages"),
+          {
+            text: text?.trim() || "",
+            imageUrl,
+            fileUrl,
+            fileName,
+            fileType,
+            fileSize,
+            senderId:
+              auth.currentUser.uid,
+            groupId: selectedUser.id,
+            isGroup: true,
+            createdAt:
+              serverTimestamp(),
+            replyTo: replyToData,
+          }
+        );
+      } else {
+        await addDoc(
+          collection(db, "messages"),
+          {
+            text: text?.trim() || "",
+            imageUrl,
+            fileUrl,
+            fileName,
+            fileType,
+            fileSize,
+            senderId:
+              auth.currentUser.uid,
+            receiverId:
+              selectedUser.uid,
+            participants: [
+              auth.currentUser.uid,
+              selectedUser.uid,
+            ],
+            createdAt:
+              serverTimestamp(),
+            delivered: false,
+            read: false,
+            replyTo: replyToData,
+          }
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Error sending message:",
+        error
+      );
+    }
+  };
+
   useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (!currentUser) return;
 
-    const userRef = doc(db, "users", currentUser.uid);
+    const userRef = doc(
+      db,
+      "users",
+      currentUser.uid
+    );
 
     setDoc(
       userRef,
@@ -646,9 +1021,12 @@ const handleSend = async (message, replyTo) => {
       },
       {
         merge: true,
-      },
+      }
     ).catch((error) => {
-      console.error("Error setting user online:", error);
+      console.error(
+        "Error setting user online:",
+        error
+      );
     });
 
     return () => {
@@ -656,15 +1034,16 @@ const handleSend = async (message, replyTo) => {
         userRef,
         {
           isOnline: false,
-          lastSeen: serverTimestamp(),
+          lastSeen:
+            serverTimestamp(),
         },
         {
           merge: true,
-        },
+        }
       ).catch((error) => {
         console.error(
           "Error setting user offline:",
-          error,
+          error
         );
       });
     };
@@ -677,8 +1056,16 @@ const handleSend = async (message, replyTo) => {
 
     const callsQuery = query(
       collection(db, "calls"),
-      where("receiverId", "==", currentUser.uid),
-      where("status", "==", "calling"),
+      where(
+        "receiverId",
+        "==",
+        currentUser.uid
+      ),
+      where(
+        "status",
+        "==",
+        "calling"
+      )
     );
 
     const unsubscribe = onSnapshot(
@@ -689,11 +1076,16 @@ const handleSend = async (message, replyTo) => {
           return;
         }
 
-        const callDoc = snapshot.docs[0];
-        const callData = callDoc.data();
+        const callDoc =
+          snapshot.docs[0];
+
+        const callData =
+          callDoc.data();
 
         const caller = users.find(
-          (user) => user.uid === callData.callerId,
+          (user) =>
+            user.uid ===
+            callData.callerId
         );
 
         if (!caller) return;
@@ -706,16 +1098,20 @@ const handleSend = async (message, replyTo) => {
       (error) => {
         console.error(
           "Error Listening for incoming calls:",
-          error,
+          error
         );
-      },
+      }
     );
 
     return () => unsubscribe();
   }, [users]);
 
   const handleCall = async () => {
-    if (!selectedUser || !auth.currentUser || callState) {
+    if (
+      !selectedUser ||
+      !auth.currentUser ||
+      callState
+    ) {
       return;
     }
 
@@ -724,10 +1120,15 @@ const handleSend = async (message, replyTo) => {
     }
 
     try {
-      const stream = await getAudioStream();
+      const stream =
+        await getAudioStream();
 
-      const callRef = doc(collection(db, "calls"));
-      const newCallId = callRef.id;
+      const callRef = doc(
+        collection(db, "calls")
+      );
+
+      const newCallId =
+        callRef.id;
 
       const pc = await createCall(
         newCallId,
@@ -735,8 +1136,10 @@ const handleSend = async (message, replyTo) => {
         selectedUser.uid,
         stream,
         (remoteAudioStream) => {
-          setRemoteStream(remoteAudioStream);
-        },
+          setRemoteStream(
+            remoteAudioStream
+          );
+        }
       );
 
       peerConnectionRef.current = pc;
@@ -748,64 +1151,31 @@ const handleSend = async (message, replyTo) => {
       setLocalStream(stream);
       setPeerConnection(pc);
 
-      listenForAnswer(newCallId, pc, (status) => {
-        if (status === "rejected" || status === "ended") {
-          cleanupCall();
-          return;
+      listenForAnswer(
+        newCallId,
+        pc,
+        (status) => {
+          if (
+            status === "rejected" ||
+            status === "ended"
+          ) {
+            cleanupCall();
+            return;
+          }
+
+          if (status === "connected") {
+            setCallState("connected");
+          }
         }
-
-        if (status === "connected") {
-          setCallState("connected");
-        }
-      });
-
-      listenForReceiverCandidates(newCallId, pc);
-
-      listenForCallStatus(newCallId, (status) => {
-        if (
-          status === "ended" ||
-          status === "rejected"
-        ) {
-          cleanupCall();
-          setIncomingCall(null);
-        }
-      });
-    } catch (error) {
-      console.error("Error starting call:", error);
-      cleanupCall();
-    }
-  };
-
-  const handleAcceptCall = async () => {
-    if (!incomingCall) return;
-
-    try {
-      const stream = await getAudioStream();
-
-      const pc = await acceptCall(
-        incomingCall.callId,
-        stream,
-        (remoteAudioStream) => {
-          setRemoteStream(remoteAudioStream);
-        },
       );
 
-      peerConnectionRef.current = pc;
-      localStreamRef.current = stream;
-      callIdRef.current = incomingCall.callId;
-
-      setCallId(incomingCall.callId);
-      setCallState("connected");
-      setLocalStream(stream);
-      setPeerConnection(pc);
-
-      listenForCallerCandidates(
-        incomingCall.callId,
-        pc,
+      listenForReceiverCandidates(
+        newCallId,
+        pc
       );
 
       listenForCallStatus(
-        incomingCall.callId,
+        newCallId,
         (status) => {
           if (
             status === "ended" ||
@@ -814,25 +1184,94 @@ const handleSend = async (message, replyTo) => {
             cleanupCall();
             setIncomingCall(null);
           }
-        },
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Error starting call:",
+        error
       );
 
-      setIncomingCall(null);
-    } catch (error) {
-      console.error("Error accepting call:", error);
+      cleanupCall();
     }
   };
 
-  const handleRejectCall = async () => {
-    if (!incomingCall) return;
+  const handleAcceptCall =
+    async () => {
+      if (!incomingCall) return;
 
-    try {
-      await rejectCall(incomingCall.callId);
-      setIncomingCall(null);
-    } catch (error) {
-      console.error("Error rejecting call:", error);
-    }
-  };
+      try {
+        const stream =
+          await getAudioStream();
+
+        const pc =
+          await acceptCall(
+            incomingCall.callId,
+            stream,
+            (remoteAudioStream) => {
+              setRemoteStream(
+                remoteAudioStream
+              );
+            }
+          );
+
+        peerConnectionRef.current = pc;
+        localStreamRef.current = stream;
+        callIdRef.current =
+          incomingCall.callId;
+
+        setCallId(
+          incomingCall.callId
+        );
+
+        setCallState("connected");
+        setLocalStream(stream);
+        setPeerConnection(pc);
+
+        listenForCallerCandidates(
+          incomingCall.callId,
+          pc
+        );
+
+        listenForCallStatus(
+          incomingCall.callId,
+          (status) => {
+            if (
+              status === "ended" ||
+              status === "rejected"
+            ) {
+              cleanupCall();
+              setIncomingCall(null);
+            }
+          }
+        );
+
+        setIncomingCall(null);
+      } catch (error) {
+        console.error(
+          "Error accepting call:",
+          error
+        );
+      }
+    };
+
+  const handleRejectCall =
+    async () => {
+      if (!incomingCall) return;
+
+      try {
+        await rejectCall(
+          incomingCall.callId
+        );
+
+        setIncomingCall(null);
+      } catch (error) {
+        console.error(
+          "Error rejecting call:",
+          error
+        );
+      }
+    };
 
   const handleEndCall = async () => {
     const id = callIdRef.current;
@@ -842,7 +1281,10 @@ const handleSend = async (message, replyTo) => {
         await endCall(id);
       }
     } catch (error) {
-      console.error("Error ending call:", error);
+      console.error(
+        "Error ending call:",
+        error
+      );
     }
 
     cleanupCall();
@@ -858,7 +1300,9 @@ const handleSend = async (message, replyTo) => {
     if (localStreamRef.current) {
       localStreamRef.current
         .getTracks()
-        .forEach((track) => track.stop());
+        .forEach((track) =>
+          track.stop()
+        );
 
       localStreamRef.current = null;
     }
@@ -900,24 +1344,46 @@ const handleSend = async (message, replyTo) => {
           onSend={handleSend}
           onCall={handleCall}
           users={users}
-          onExitGroup={() => setSelectedUser(null)}
+          onExitGroup={() =>
+            setSelectedUser(null)
+          }
+          loadOlderMessages={
+            loadOlderMessages
+          }
+          loadingOlder={loadingOlder}
+          hasMoreMessages={
+            hasMoreMessages
+          }
         />
       </div>
 
-      {callState && selectedUser && (
-        <CallModal
-          selectedUser={selectedUser}
-          callState={callState}
-          onEndCall={handleEndCall}
-          isSpeaking={isSpeaking}
-        />
-      )}
+      {callState &&
+        selectedUser && (
+          <CallModal
+            selectedUser={
+              selectedUser
+            }
+            callState={callState}
+            onEndCall={
+              handleEndCall
+            }
+            isSpeaking={
+              isSpeaking
+            }
+          />
+        )}
 
       {incomingCall && (
         <IncomingCall
-          caller={incomingCall.caller}
-          onAccept={handleAcceptCall}
-          onReject={handleRejectCall}
+          caller={
+            incomingCall.caller
+          }
+          onAccept={
+            handleAcceptCall
+          }
+          onReject={
+            handleRejectCall
+          }
         />
       )}
 
@@ -926,7 +1392,8 @@ const handleSend = async (message, replyTo) => {
           autoPlay
           ref={(audio) => {
             if (audio) {
-              audio.srcObject = remoteStream;
+              audio.srcObject =
+                remoteStream;
             }
           }}
         />

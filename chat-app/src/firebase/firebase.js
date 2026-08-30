@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBj-tWDx_18zlakdHwymGqENWIpzLw5N3M",
@@ -15,7 +15,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 
 export async function getUsersFromAPI() {
   const user = auth.currentUser;
@@ -45,17 +48,15 @@ export async function getUsersFromAPI() {
     const fields = document.fields || {};
 
     return {
-    
-  id: document.name.split("/").pop(),
-  uid: fields.uid?.stringValue || "",
-  name: fields.name?.stringValue || "",
-  email: fields.email?.stringValue || "",
-  phone: fields.phone?.stringValue || "",
-  description: fields.description?.stringValue || "",
-  avatar: fields.avatar?.stringValue || "",
-  isOnline: fields.isOnline?.booleanValue || false,
-  lastSeen: fields.lastSeen?.timestampValue || null,
-
+      id: document.name.split("/").pop(),
+      uid: fields.uid?.stringValue || "",
+      name: fields.name?.stringValue || "",
+      email: fields.email?.stringValue || "",
+      phone: fields.phone?.stringValue || "",
+      description: fields.description?.stringValue || "",
+      avatar: fields.avatar?.stringValue || "",
+      isOnline: fields.isOnline?.booleanValue || false,
+      lastSeen: fields.lastSeen?.timestampValue || null,
     };
   });
 }

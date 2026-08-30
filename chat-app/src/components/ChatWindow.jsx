@@ -875,11 +875,9 @@ export function ChatWindow({
   const moreMenuRef = useRef(null);
 
   const messagesContainerRef = useRef(null);
-  const previousScrollHeightRef = useRef(0);
-
-  // Tracks whether the current `messages` change is caused by loading older
-  // messages (pagination) so the bottom-scroll effect below can skip it.
-  const isLoadingOlderRef = useRef(false);
+const previousScrollHeightRef = useRef(0);
+const previousScrollTopRef = useRef(0);
+const isLoadingOlderRef = useRef(false);
 
   useEffect(() => {
     if (!showMore) return;
@@ -942,24 +940,36 @@ export function ChatWindow({
       )
     : [];
 
-  // Auto-scroll to the bottom when a new message arrives or the chat
-  // changes — but NOT when the change came from loading older messages,
-  // otherwise it fights with the "preserve scroll position" logic in
-  // handleMessagesScroll and yanks the user back to the bottom.
-  useEffect(() => {
-    if (chatSearch.trim()) return;
 
-    if (isLoadingOlderRef.current) {
+ useEffect(() => {
+  if (chatSearch.trim()) return;
+
+  if (isLoadingOlderRef.current) {
+    requestAnimationFrame(() => {
+      const container = messagesContainerRef.current;
+
+      if (!container) return;
+
+      const newScrollHeight = container.scrollHeight;
+
+      const heightDifference =
+        newScrollHeight - previousScrollHeightRef.current;
+
+      container.scrollTop =
+        previousScrollTopRef.current + heightDifference;
+
       isLoadingOlderRef.current = false;
-      return;
-    }
+    });
 
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({
-        behavior: "auto",
-      });
-    }
-  }, [messages, selectedUser]);
+    return;
+  }
+
+  if (messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({
+      behavior: "auto",
+    });
+  }
+}, [messages, selectedUser]);
 
   useEffect(() => {
     if (!chatSearch.trim() || searchMatches.length === 0) {
@@ -1034,35 +1044,31 @@ export function ChatWindow({
     }
   };
 
-  // Handles infinite-scroll pagination: when the user scrolls near the top
-  // of the messages container, fetch older messages and keep the viewport
-  // anchored on the message that was visible before the fetch.
-  const handleMessagesScroll = async (e) => {
-    const container = e.currentTarget;
 
-    if (container.scrollTop <= 50 && !loadingOlder && hasMoreMessages) {
-      isLoadingOlderRef.current = true;
+const handleMessagesScroll = async (e) => {
+  const container = e.currentTarget;
 
-      const previousScrollTop = container.scrollTop;
-      previousScrollHeightRef.current = container.scrollHeight;
+  if (
+    container.scrollTop > 50 ||
+    loadingOlder ||
+    !hasMoreMessages ||
+    isLoadingOlderRef.current
+  ) {
+    return;
+  }
 
-      try {
-        await onLoadOlder?.();
-      } catch (error) {
-        console.error("Error loading older messages:", error);
-        isLoadingOlderRef.current = false;
-        return;
-      }
+  isLoadingOlderRef.current = true;
 
-      requestAnimationFrame(() => {
-        const newScrollHeight = container.scrollHeight;
-        const difference =
-          newScrollHeight - previousScrollHeightRef.current;
+  previousScrollTopRef.current = container.scrollTop;
+  previousScrollHeightRef.current = container.scrollHeight;
 
-        container.scrollTop = previousScrollTop + difference;
-      });
-    }
-  };
+  try {
+    await onLoadOlder?.();
+  } catch (error) {
+    console.error("Error loading older messages:", error);
+    isLoadingOlderRef.current = false;
+  }
+};
 
   const handleDeleteMessage = async () => {
     if (!selectedMessage) return;
@@ -1179,42 +1185,17 @@ export function ChatWindow({
   };
 
   const handleAddGroupMembers = async (memberIds) => {
-    if (!selectedUser?.isGroup || !currentUser) return;
+    if (!selectedUser?.isGroup) return;
 
     try {
       await updateDoc(doc(db, "groups", selectedUser.id), {
         members: arrayUnion(...memberIds),
       });
-
-      const adderName =
-        currentUserName || currentUser.displayName || "Someone";
-
-      const addedNames = memberIds.map((id) => {
-        const found = users.find((u) => u.uid === id || u.id === id);
-        return found?.name || "someone";
-      });
-
-      const addedText =
-        addedNames.length === 1
-          ? addedNames[0]
-          : addedNames.length === 2
-            ? `${addedNames[0]} and ${addedNames[1]}`
-            : `${addedNames.slice(0, -1).join(", ")}, and ${
-                addedNames[addedNames.length - 1]
-              }`;
-
-      await addDoc(collection(db, "messages"), {
-        type: "system",
-        text: `${adderName} added ${addedText}`,
-        groupId: selectedUser.id,
-        isGroup: true,
-        senderId: currentUser.uid,
-        createdAt: serverTimestamp(),
-      });
     } catch (error) {
       console.error("Error adding group members:", error);
     }
   };
+
   const handleRemoveGroupMember = async (memberId) => {
     if (!selectedUser?.isGroup) return;
 
@@ -1500,14 +1481,13 @@ if (!selectedUser) {
           )}
 
           {messages.map((message) => {
-
               if (message.type === "system") {
-              return (
-                <div key={message.id} className="system-message">
-                  <span>{message.text}</span>
-                </div>
-              );
-            }
+    return (
+      <div key={message.id} className="system-message">
+        <span>{message.text}</span>
+      </div>
+    );
+  }
             const isMyMessage = message.senderId === currentUser?.uid;
 
             const sender = getSenderInfo(message.senderId);
