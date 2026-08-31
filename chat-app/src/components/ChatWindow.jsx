@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { MessageInput } from "./MessageInput";
 import { auth, db, realtimeDb } from "../firebase/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { ref, onValue } from "firebase/database";
 import {
   doc,
@@ -312,10 +313,18 @@ function ContactInfoPanel({
 
   const [nameInput, setNameInput] = useState(displayName || "");
   
- const currentUser = auth.currentUser;
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  
 const [allMediaMessages, setAllMediaMessages] = useState([]);
-
 useEffect(() => {
   if (!currentUser || !user || user.isGroup) {
     setAllMediaMessages([]);
@@ -323,6 +332,11 @@ useEffect(() => {
   }
 
   const otherUserId = user.uid || user.id;
+
+  if (!otherUserId) {
+    setAllMediaMessages([]);
+    return;
+  }
 
   const sentQuery = query(
     collection(db, "messages"),
@@ -353,21 +367,33 @@ useEffect(() => {
     setAllMediaMessages(merged);
   };
 
-  const unsubSent = onSnapshot(sentQuery, (snapshot) => {
-    sentDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    mergeAndSet();
-  });
+  const unsubSent = onSnapshot(
+    sentQuery,
+    (snapshot) => {
+      sentDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      mergeAndSet();
+    },
+    (error) => {
+      console.error("Error fetching sent media messages:", error);
+    },
+  );
 
-  const unsubReceived = onSnapshot(receivedQuery, (snapshot) => {
-    receivedDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    mergeAndSet();
-  });
+  const unsubReceived = onSnapshot(
+    receivedQuery,
+    (snapshot) => {
+      receivedDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      mergeAndSet();
+    },
+    (error) => {
+      console.error("Error fetching received media messages:", error);
+    },
+  );
 
   return () => {
     unsubSent();
     unsubReceived();
   };
-}, [currentUser, user]);
+}, [currentUser, user?.uid, user?.id, user?.isGroup]);
 
 const mediaMessages = allMediaMessages;
 
