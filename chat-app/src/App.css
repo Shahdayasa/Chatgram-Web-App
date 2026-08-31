@@ -4269,3 +4269,62 @@ right: 0;
   color: white;
   font-size: 16px;
 }
+
+.group-header-avatar {
+  position: relative;
+  overflow: hidden;
+}
+
+.group-header-camera {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: rgba(0, 0, 0, 0.48);
+
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  z-index: 5;
+
+  cursor: pointer;
+}
+
+.group-header-avatar:hover .group-header-camera {
+  opacity: 1;
+}
+
+.group-header-camera svg {
+  color: white;
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+.group-header-camera:hover svg {
+  transform: scale(1.15);
+}
+
+.avatar-hover-overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.48);
+
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  cursor: pointer;
+}
+
+.contact-info-avatar-wrapper:hover .avatar-hover-overlay {
+  opacity: 1;
+}

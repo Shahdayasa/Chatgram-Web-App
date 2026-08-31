@@ -67,9 +67,7 @@ export function Chat() {
   const [searchTerm, setSearchTerm] = useState("");
   const [unreadCounts, setUnreadCounts] = useState({});
 
-  // =========================
-  // CONTACT NAMES / NICKNAMES
-  // =========================
+
 
   const [contactNames, setContactNames] = useState({});
 
@@ -94,9 +92,7 @@ export function Chat() {
   const sessionIdRef = useRef(null);
   const processedCallIdsRef = useRef(new Set());
 
-  // =========================================================
-  // DETECT SPEAKING
-  // =========================================================
+
 
   useEffect(() => {
     const combinedStreams = Object.values(remoteStreams);
@@ -171,9 +167,6 @@ export function Chat() {
     };
   }, [remoteStreams]);
 
-  // =========================================================
-  // LOAD USERS
-  // =========================================================
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -259,9 +252,6 @@ useEffect(() => {
     };
   }, []);
 
-  // =========================================================
-  // SELECT USER FROM URL
-  // =========================================================
 
   useEffect(() => {
     if (!userId || users.length === 0) {
@@ -277,9 +267,6 @@ useEffect(() => {
     }
   }, [userId, users]);
 
-  // =========================================================
-  // REQUEST NOTIFICATION PERMISSION
-  // =========================================================
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -293,9 +280,6 @@ useEffect(() => {
     }
   }, []);
 
-  // =========================================================
-  // MESSAGE NOTIFICATIONS
-  // =========================================================
 
   useEffect(() => {
     let unsubscribeMessages = null;
@@ -456,9 +440,6 @@ useEffect(() => {
     };
   }, [contactNames]);
 
-  // =========================================================
-  // LOAD MESSAGE PREVIEWS + UNREAD COUNTS
-  // =========================================================
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -522,9 +503,7 @@ useEffect(() => {
     return () => unsubscribe();
   }, []);
 
-  // =========================================================
-  // LOAD PRIVATE CHAT MESSAGES
-  // =========================================================
+
 
   useEffect(() => {
     if (!auth.currentUser) {
@@ -638,9 +617,7 @@ useEffect(() => {
     return () => unsubscribe();
   }, [selectedUser]);
 
-  // =========================================================
-  // LOAD GROUPS
-  // =========================================================
+
 
   useEffect(() => {
     let unsubscribeGroups = null;
@@ -699,9 +676,7 @@ useEffect(() => {
     };
   }, []);
 
-  // =========================================================
-  // UPDATE SELECTED GROUP
-  // =========================================================
+
 
   useEffect(() => {
     if (!selectedUser?.isGroup) {
@@ -720,9 +695,7 @@ useEffect(() => {
     }
   }, [groups, selectedUser]);
 
-  // =========================================================
-  // GROUP PREVIEWS
-  // =========================================================
+
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -767,9 +740,6 @@ useEffect(() => {
     return () => unsubscribe();
   }, [groups]);
 
-  // =========================================================
-  // GROUP MESSAGES
-  // =========================================================
 
   useEffect(() => {
     if (!selectedUser?.isGroup) {
@@ -819,9 +789,7 @@ useEffect(() => {
     return () => unsubscribe();
   }, [selectedUser]);
 
-  // =========================================================
-  // LOAD OLDER MESSAGES
-  // =========================================================
+
 
   const loadOlderMessages = async () => {
     if (
@@ -946,9 +914,7 @@ useEffect(() => {
     }
   };
 
-  // =========================================================
-  // SEND MESSAGE
-  // =========================================================
+
 
   const handleSend = async (
     message,

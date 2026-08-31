@@ -1,10 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { MessageInput } from "./MessageInput";
 import { auth, db, realtimeDb } from "../firebase/firebase";
-import {
-  ref,
-  onValue,
-} from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import {
   doc,
   onSnapshot,
@@ -17,7 +14,7 @@ import {
   where,
   getDocs,
   writeBatch,
-    addDoc,
+  addDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -44,7 +41,6 @@ import {
   faArrowLeft,
   faCamera,
   faCommentDots,
-
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -55,10 +51,7 @@ const getLastSeen = (timestamp) => {
   const lastSeenDate = timestamp.toDate();
   const now = new Date();
 
-  const diffInSeconds = Math.max(
-    0,
-    Math.floor((now - lastSeenDate) / 1000)
-  );
+  const diffInSeconds = Math.max(0, Math.floor((now - lastSeenDate) / 1000));
 
   if (diffInSeconds < 60) {
     return "Last seen just now";
@@ -81,9 +74,7 @@ const getLastSeen = (timestamp) => {
   const diffInDays = Math.floor(diffInHours / 24);
 
   if (diffInDays < 7) {
-    return `Last seen ${diffInDays} ${
-      diffInDays === 1 ? "day" : "days"
-    } ago`;
+    return `Last seen ${diffInDays} ${diffInDays === 1 ? "day" : "days"} ago`;
   }
 
   return `Last seen ${lastSeenDate.toLocaleDateString()}`;
@@ -96,8 +87,7 @@ const isUserOnline = (user) => {
 
   const lastActiveTime = user.lastActive.toDate().getTime();
 
-  const differenceInSeconds =
-    (Date.now() - lastActiveTime) / 1000;
+  const differenceInSeconds = (Date.now() - lastActiveTime) / 1000;
 
   return differenceInSeconds < 25;
 };
@@ -765,9 +755,7 @@ function GroupInfoPanel({
 
             <span>Members</span>
 
-            <span className="contact-info-media-count">
-              {members.length}
-            </span>
+            <span className="contact-info-media-count">{members.length}</span>
           </div>
 
           <button
@@ -864,7 +852,7 @@ export function ChatWindow({
   const currentUser = auth.currentUser;
 
   const [showMore, setShowMore] = useState(false);
-const [isSelectedUserOnline, setIsSelectedUserOnline] = useState(false);
+  const [isSelectedUserOnline, setIsSelectedUserOnline] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
   const [chatSearch, setChatSearch] = useState("");
@@ -890,15 +878,15 @@ const [isSelectedUserOnline, setIsSelectedUserOnline] = useState(false);
   const [showMessageInfo, setShowMessageInfo] = useState(false);
 
   const [contactNames, setContactNames] = useState({});
-const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
+  const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
   const messageRefs = useRef({});
   const messagesEndRef = useRef(null);
   const moreMenuRef = useRef(null);
 
   const messagesContainerRef = useRef(null);
-const previousScrollHeightRef = useRef(0);
-const previousScrollTopRef = useRef(0);
-const isLoadingOlderRef = useRef(false);
+  const previousScrollHeightRef = useRef(0);
+  const previousScrollTopRef = useRef(0);
+  const isLoadingOlderRef = useRef(false);
 
   useEffect(() => {
     if (!showMore) return;
@@ -915,41 +903,36 @@ const isLoadingOlderRef = useRef(false);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMore]);
-useEffect(() => {
-  if (!selectedUser || selectedUser.isGroup) {
-    setIsSelectedUserOnline(false);
-    return;
-  }
-
-  const userId = selectedUser.uid || selectedUser.id;
-
-  if (!userId) {
-    setIsSelectedUserOnline(false);
-    return;
-  }
-
-  const presenceRef = ref(
-    realtimeDb,
-    `presence/${userId}`
-  );
-
-  const unsubscribe = onValue(
-    presenceRef,
-    (snapshot) => {
-      const data = snapshot.val();
-
-      setIsSelectedUserOnline(
-        data?.state === "online"
-      );
-    },
-    (error) => {
-      console.error("Presence listener error:", error);
+  useEffect(() => {
+    if (!selectedUser || selectedUser.isGroup) {
       setIsSelectedUserOnline(false);
+      return;
     }
-  );
 
-  return () => unsubscribe();
-}, [selectedUser]);
+    const userId = selectedUser.uid || selectedUser.id;
+
+    if (!userId) {
+      setIsSelectedUserOnline(false);
+      return;
+    }
+
+    const presenceRef = ref(realtimeDb, `presence/${userId}`);
+
+    const unsubscribe = onValue(
+      presenceRef,
+      (snapshot) => {
+        const data = snapshot.val();
+
+        setIsSelectedUserOnline(data?.state === "online");
+      },
+      (error) => {
+        console.error("Presence listener error:", error);
+        setIsSelectedUserOnline(false);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [selectedUser]);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -989,42 +972,38 @@ useEffect(() => {
 
   const searchMatches = chatSearch.trim()
     ? messages.filter((message) =>
-        message.text
-          ?.toLowerCase()
-          .includes(chatSearch.toLowerCase().trim()),
+        message.text?.toLowerCase().includes(chatSearch.toLowerCase().trim()),
       )
     : [];
 
+  useEffect(() => {
+    if (chatSearch.trim()) return;
 
- useEffect(() => {
-  if (chatSearch.trim()) return;
+    if (isLoadingOlderRef.current) {
+      requestAnimationFrame(() => {
+        const container = messagesContainerRef.current;
 
-  if (isLoadingOlderRef.current) {
-    requestAnimationFrame(() => {
-      const container = messagesContainerRef.current;
+        if (!container) return;
 
-      if (!container) return;
+        const newScrollHeight = container.scrollHeight;
 
-      const newScrollHeight = container.scrollHeight;
+        const heightDifference =
+          newScrollHeight - previousScrollHeightRef.current;
 
-      const heightDifference =
-        newScrollHeight - previousScrollHeightRef.current;
+        container.scrollTop = previousScrollTopRef.current + heightDifference;
 
-      container.scrollTop =
-        previousScrollTopRef.current + heightDifference;
+        isLoadingOlderRef.current = false;
+      });
 
-      isLoadingOlderRef.current = false;
-    });
+      return;
+    }
 
-    return;
-  }
-
-  if (messagesEndRef.current) {
-    messagesEndRef.current.scrollIntoView({
-      behavior: "auto",
-    });
-  }
-}, [messages, selectedUser]);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: "auto",
+      });
+    }
+  }, [messages, selectedUser]);
 
   useEffect(() => {
     if (!chatSearch.trim() || searchMatches.length === 0) {
@@ -1099,31 +1078,30 @@ useEffect(() => {
     }
   };
 
+  const handleMessagesScroll = async (e) => {
+    const container = e.currentTarget;
 
-const handleMessagesScroll = async (e) => {
-  const container = e.currentTarget;
+    if (
+      container.scrollTop > 50 ||
+      loadingOlder ||
+      !hasMoreMessages ||
+      isLoadingOlderRef.current
+    ) {
+      return;
+    }
 
-  if (
-    container.scrollTop > 50 ||
-    loadingOlder ||
-    !hasMoreMessages ||
-    isLoadingOlderRef.current
-  ) {
-    return;
-  }
+    isLoadingOlderRef.current = true;
 
-  isLoadingOlderRef.current = true;
+    previousScrollTopRef.current = container.scrollTop;
+    previousScrollHeightRef.current = container.scrollHeight;
 
-  previousScrollTopRef.current = container.scrollTop;
-  previousScrollHeightRef.current = container.scrollHeight;
-
-  try {
-    await onLoadOlder?.();
-  } catch (error) {
-    console.error("Error loading older messages:", error);
-    isLoadingOlderRef.current = false;
-  }
-};
+    try {
+      await onLoadOlder?.();
+    } catch (error) {
+      console.error("Error loading older messages:", error);
+      isLoadingOlderRef.current = false;
+    }
+  };
 
   const handleDeleteMessage = async () => {
     if (!selectedMessage) return;
@@ -1138,52 +1116,52 @@ const handleMessagesScroll = async (e) => {
     }
   };
 
-const handleDeleteChat = async () => {
-  const currentUser = auth.currentUser;
+  const handleDeleteChat = async () => {
+    const currentUser = auth.currentUser;
 
-  if (!currentUser || !selectedUser) {
-    return;
-  }
+    if (!currentUser || !selectedUser) {
+      return;
+    }
 
-  try {
-    const otherUserId = selectedUser.uid || selectedUser.id;
+    try {
+      const otherUserId = selectedUser.uid || selectedUser.id;
 
-    const sentQuery = query(
-      collection(db, "messages"),
-      where("senderId", "==", currentUser.uid),
-      where("receiverId", "==", otherUserId),
-    );
+      const sentQuery = query(
+        collection(db, "messages"),
+        where("senderId", "==", currentUser.uid),
+        where("receiverId", "==", otherUserId),
+      );
 
-    const receivedQuery = query(
-      collection(db, "messages"),
-      where("senderId", "==", otherUserId),
-      where("receiverId", "==", currentUser.uid),
-    );
+      const receivedQuery = query(
+        collection(db, "messages"),
+        where("senderId", "==", otherUserId),
+        where("receiverId", "==", currentUser.uid),
+      );
 
-    const [sentSnapshot, receivedSnapshot] = await Promise.all([
-      getDocs(sentQuery),
-      getDocs(receivedQuery),
-    ]);
+      const [sentSnapshot, receivedSnapshot] = await Promise.all([
+        getDocs(sentQuery),
+        getDocs(receivedQuery),
+      ]);
 
-    const batch = writeBatch(db);
+      const batch = writeBatch(db);
 
-    sentSnapshot.forEach((messageDoc) => {
-      batch.delete(messageDoc.ref);
-    });
+      sentSnapshot.forEach((messageDoc) => {
+        batch.delete(messageDoc.ref);
+      });
 
-    receivedSnapshot.forEach((messageDoc) => {
-      batch.delete(messageDoc.ref);
-    });
+      receivedSnapshot.forEach((messageDoc) => {
+        batch.delete(messageDoc.ref);
+      });
 
-    await batch.commit();
+      await batch.commit();
 
-    setShowMore(false);
-  } catch (error) {
-    console.error("Error deleting chat:", error);
-  } finally {
-    setConfirmDeleteChat(false);
-  }
-};
+      setShowMore(false);
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+    } finally {
+      setConfirmDeleteChat(false);
+    }
+  };
   const handleTogglePin = async () => {
     if (!selectedMessage) return;
 
@@ -1302,9 +1280,7 @@ const handleDeleteChat = async () => {
 
   const renderAvatar = (image, name, alt) => {
     if (image) {
-      return (
-        <img src={image} alt={alt} className="message-avatar-image" />
-      );
+      return <img src={image} alt={alt} className="message-avatar-image" />;
     }
 
     return (
@@ -1329,20 +1305,20 @@ const handleDeleteChat = async () => {
     );
   };
 
-if (!selectedUser) {
-  return (
-    <div className="chat-window empty-chat">
-      <div className="start-conversation">
-        <div className="start-icon">
-          <FontAwesomeIcon icon={faCommentDots} />
-        </div>
+  if (!selectedUser) {
+    return (
+      <div className="chat-window empty-chat">
+        <div className="start-conversation">
+          <div className="start-icon">
+            <FontAwesomeIcon icon={faCommentDots} />
+          </div>
 
-        <h2>Start a new conversation</h2>
-        <p>Select a user from the chat list to start chatting.</p>
+          <h2>Start a new conversation</h2>
+          <p>Select a user from the chat list to start chatting.</p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="chat-window">
@@ -1398,10 +1374,13 @@ if (!selectedUser) {
         <div className="chat-header">
           <div className="prof-name-seen">
             <div
-              className="prof-pic"
+              className={`prof-pic ${
+                selectedUser.isGroup ? "group-header-avatar" : ""
+              }`}
               onClick={() => setShowContactInfo(true)}
               style={{
                 cursor: "pointer",
+                position: "relative",
               }}
             >
               {selectedUser.avatar ? (
@@ -1425,15 +1404,15 @@ if (!selectedUser) {
             <div className="name-status">
               <h3>{displayName}</h3>
 
-           <p>
-  {selectedUser.isGroup
-    ? `${selectedUser.members?.length || 0} members`
-    : isBlocked
-      ? "Blocked"
-      : isUserOnline(selectedUser)
-        ? "Online"
-        : getLastSeen(selectedUser.lastActive)}
-</p>
+              <p>
+                {selectedUser.isGroup
+                  ? `${selectedUser.members?.length || 0} members`
+                  : isBlocked
+                    ? "Blocked"
+                    : isUserOnline(selectedUser)
+                      ? "Online"
+                      : getLastSeen(selectedUser.lastActive)}
+              </p>
             </div>
           </div>
 
@@ -1468,31 +1447,33 @@ if (!selectedUser) {
               </button>
             )}
 
-            <div className="chat-more-wrapper" ref={moreMenuRef}>
-              <button
-                className="chat-more-button"
-                type="button"
-                onClick={() => setShowMore((prev) => !prev)}
-              >
-                <FontAwesomeIcon icon={faEllipsisVertical} />
-              </button>
+            {!selectedUser.isGroup && (
+              <div className="chat-more-wrapper" ref={moreMenuRef}>
+                <button
+                  className="chat-more-button"
+                  type="button"
+                  onClick={() => setShowMore((prev) => !prev)}
+                >
+                  <FontAwesomeIcon icon={faEllipsisVertical} />
+                </button>
 
-              {showMore && !selectedUser.isGroup && (
-                <div className="chat-more-menu">
-                  <button
-                    type="button"
-                    onClick={handleBlockToggle}
-                    disabled={loadingBlock}
-                  >
-                    {loadingBlock
-                      ? "Please wait..."
-                      : isBlocked
-                        ? "Unblock User"
-                        : "Block User"}
-                  </button>
-                </div>
-              )}
-            </div>
+                {showMore && (
+                  <div className="chat-more-menu">
+                    <button
+                      type="button"
+                      onClick={handleBlockToggle}
+                      disabled={loadingBlock}
+                    >
+                      {loadingBlock
+                        ? "Please wait..."
+                        : isBlocked
+                          ? "Unblock User"
+                          : "Block User"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1537,13 +1518,13 @@ if (!selectedUser) {
           )}
 
           {messages.map((message) => {
-              if (message.type === "system") {
-    return (
-      <div key={message.id} className="system-message">
-        <span>{message.text}</span>
-      </div>
-    );
-  }
+            if (message.type === "system") {
+              return (
+                <div key={message.id} className="system-message">
+                  <span>{message.text}</span>
+                </div>
+              );
+            }
             const isMyMessage = message.senderId === currentUser?.uid;
 
             const sender = getSenderInfo(message.senderId);
@@ -1597,9 +1578,7 @@ if (!selectedUser) {
                   }}
                 >
                   {!isMyMessage && selectedUser.isGroup && (
-                    <span className="message-sender-name">
-                      {sender.name}
-                    </span>
+                    <span className="message-sender-name">{sender.name}</span>
                   )}
 
                   {message.replyTo && (
@@ -1680,10 +1659,6 @@ if (!selectedUser) {
                     )}
                   </div>
                 </div>
-
-
-
-
               </div>
             );
           })}
@@ -1810,11 +1785,7 @@ if (!selectedUser) {
         </div>
       ) : (
         <>
-          {replyingTo && (
-            <div className="reply-preview">
-              ...
-            </div>
-          )}
+          {replyingTo && <div className="reply-preview">...</div>}
 
           <MessageInput
             onSend={(payload) => {
@@ -1836,7 +1807,10 @@ if (!selectedUser) {
               >
                 Cancel
               </button>
-              <button className="confirm-logout-button" onClick={handleDeleteChat}>
+              <button
+                className="confirm-logout-button"
+                onClick={handleDeleteChat}
+              >
                 Delete
               </button>
             </div>

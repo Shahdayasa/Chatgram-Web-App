@@ -19,17 +19,7 @@ export function Chatlist({
 }) {
   const [contactNames, setContactNames] = useState({});
 
-  /*
-   * Get nicknames/contact names of the CURRENT USER
-   *
-   * Example Firestore:
-   *
-   * users / CURRENT_USER_UID
-   *
-   * contactNames: {
-   *   OTHER_USER_UID: "Shahd ❤️"
-   * }
-   */
+  
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -63,32 +53,10 @@ export function Chatlist({
 
   const search = searchTerm.trim().toLowerCase();
 
-  /*
-   * Get the real UID of a user.
-   *
-   * Some of your user objects may have:
-   *   id
-   *
-   * and some may have:
-   *   uid
-   *
-   * So we support both.
-   */
   const getUserId = (user) => {
     return user?.uid || user?.id;
   };
 
-  /*
-   * IMPORTANT:
-   *
-   * If the user has a nickname:
-   *
-   * contactNames[otherUserUid]
-   *
-   * use it.
-   *
-   * Otherwise use the original Firebase name.
-   */
   const getDisplayName = (user) => {
     if (!user) return "Unknown";
 
@@ -102,9 +70,6 @@ export function Chatlist({
     );
   };
 
-  /*
-   * USER CHAT ITEMS
-   */
   const userItems = users
     .filter((user) => {
       const uid = getUserId(user);
@@ -124,9 +89,7 @@ export function Chatlist({
       };
     });
 
-  /*
-   * GROUP ITEMS
-   */
+  
   const groupItems = groups.map((group) => ({
     type: "group",
     id: group.id,
@@ -140,18 +103,14 @@ export function Chatlist({
 
   let chatItems;
 
-  /*
-   * NO SEARCH
-   */
+  
   if (search === "") {
     chatItems = [...userItems, ...groupItems].sort(
       (a, b) => b.sortDate - a.sortDate
     );
   }
 
-  /*
-   * SEARCH
-   */
+
   else {
     const filteredUsers = users
       .filter((user) => {
@@ -160,19 +119,7 @@ export function Chatlist({
         return uid && previews[uid];
       })
       .filter((user) => {
-        /*
-         * Search BOTH:
-         *
-         * 1. Nickname
-         * 2. Original Firebase name
-         *
-         * So if:
-         *
-         * name = raghad
-         * nickname = Shahd ❤️
-         *
-         * searching "shahd" will find the contact.
-         */
+
 
         const nickname = getDisplayName(user).toLowerCase();
         const originalName = (user.name || "").toLowerCase();
@@ -220,9 +167,7 @@ export function Chatlist({
     );
   }
 
-  /*
-   * Preview text
-   */
+
   const getPreviewText = (preview) => {
     if (preview?.text?.trim()) {
       return preview.text;
@@ -239,9 +184,7 @@ export function Chatlist({
     return "";
   };
 
-  /*
-   * Get sender name for GROUP messages
-   */
+
   const getGroupSenderName = (senderId) => {
     const currentUser = auth.currentUser;
 
@@ -263,10 +206,6 @@ export function Chatlist({
       return "Someone";
     }
 
-    /*
-     * For group messages we can also show nickname
-     * if the current user has one saved for that member.
-     */
     return getDisplayName(sender);
   };
 
@@ -289,24 +228,15 @@ export function Chatlist({
 
         const isGroup = type === "group";
 
-        /*
-         * USER DISPLAY NAME
-         */
         const displayName = isGroup
           ? data.name || "Group"
           : getDisplayName(data);
-
-        /*
-         * GROUP SENDER
-         */
         const senderName =
           isGroup && preview?.senderId
             ? getGroupSenderName(preview.senderId)
             : "";
 
-        /*
-         * UNREAD
-         */
+    
         const userId = getUserId(data);
 
         const unreadCount = !isGroup
@@ -320,9 +250,7 @@ export function Chatlist({
             onClick={() => onSelectUser(data)}
           >
 
-            {/* =========================
-                AVATAR
-            ========================= */}
+      
 
             <div className="prof-pic">
 
