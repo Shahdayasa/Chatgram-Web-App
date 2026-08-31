@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
+import {
+  faUserGroup,
+  faEllipsisVertical,
+  faTrash,
+ } from "@fortawesome/free-solid-svg-icons";
+
 import { auth, db } from "../firebase/firebase";
 
 import {
   doc,
+  updateDoc,
+  deleteField,
   onSnapshot,
 } from "firebase/firestore";
 
@@ -18,13 +25,15 @@ export function Chatlist({
   unreadCounts = {},
 }) {
   const [contactNames, setContactNames] = useState({});
-
-  
+  const [hiddenChats, setHiddenChats] = useState({});
+  const [openMenuId, setOpenMenuId] = useState(null);  
+  const menuWrapperRef = useRef(null);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
       setContactNames({});
+       setHiddenChats({});
       return;
     }
 
@@ -35,22 +44,45 @@ export function Chatlist({
       (snapshot) => {
         if (!snapshot.exists()) {
           setContactNames({});
+          setHiddenChats({});
           return;
         }
 
         const data = snapshot.data();
 
         setContactNames(data.contactNames || {});
+        setHiddenChats(data.hiddenChats || {});
       },
       (error) => {
         console.error("Error loading contact names:", error);
         setContactNames({});
+        setHiddenChats({});
       }
     );
 
     return () => unsubscribe();
   }, []);
 
+
+    useEffect(() => {
+    if (!openMenuId) return;
+
+    const handleClickOutside = (e) => {
+      if (
+        menuWrapperRef.current &&
+        !menuWrapperRef.current.contains(e.target)
+      ) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
+  
   const search = searchTerm.trim().toLowerCase();
 
   const getUserId = (user) => {
@@ -70,6 +102,35 @@ export function Chatlist({
     );
   };
 
+
+  const isChatHidden = (id, sortDate) => {
+    const hiddenAt = hiddenChats?.[id];
+
+    if (!hiddenAt) return false;
+
+    if (!sortDate || sortDate.getTime() === 0) {
+      return true;
+    }
+
+    return sortDate.getTime() <= hiddenAt;
+  };
+
+
+    const handleDeleteChat = async (id) => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser || !id) return;
+
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        [`hiddenChats.${id}`]: Date.now(),
+      });
+    } catch (error) {
+      console.error("Error hiding chat:", error);
+    } finally {
+      setOpenMenuId(null);
+    }
+  };
   const userItems = users
     .filter((user) => {
       const uid = getUserId(user);
@@ -166,7 +227,9 @@ export function Chatlist({
       (a, b) => b.sortDate - a.sortDate
     );
   }
-
+  chatItems = chatItems.filter(
+    (item) => !isChatHidden(item.id, item.sortDate)
+  );
 
   const getPreviewText = (preview) => {
     if (preview?.text?.trim()) {
@@ -242,6 +305,8 @@ export function Chatlist({
         const unreadCount = !isGroup
           ? unreadCounts[userId] || 0
           : 0;
+
+        const isMenuOpen = openMenuId === id;
 
         return (
           <div
@@ -333,7 +398,38 @@ export function Chatlist({
                     : unreadCount}
                 </span>
               )}
+  <div
+                className="chat-item-menu-wrapper"
+                ref={isMenuOpen ? menuWrapperRef : null}
+              >
+                <button
+                  type="button"
+                  className="chat-item-more-button"
+                  onClick={(e) => {
+                    // stop propagation so clicking the button doesn't open the chat
+                    e.stopPropagation();
+                    setOpenMenuId((prev) => (prev === id ? null : id));
+                  }}
+                >
+                  <FontAwesomeIcon icon={faEllipsisVertical} />
+                </button>
 
+                {isMenuOpen && (
+                  <div
+                    className="chat-item-menu"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => handleDeleteChat(id)}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                      Delete chat
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
