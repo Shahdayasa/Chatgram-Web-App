@@ -304,12 +304,27 @@ function ContactInfoPanel({
   onRename,
   onCall,
   onSearch,
+  onGoToMessage,
+
 }) {
   const [editing, setEditing] = useState(false);
 
   const [nameInput, setNameInput] = useState(displayName || "");
+  
+ const currentUser = auth.currentUser;
 
   const mediaMessages = messages.filter((m) => m.imageUrl);
+    const starredMessages = messages.filter((m) =>
+    m.starredBy?.includes(currentUser?.uid),
+  );
+
+  const getStarredPreview = (message) => {
+    if (message.imageUrl) return "📷 Photo";
+
+    if (message.fileUrl) return `📎 ${message.fileName || "File"}`;
+
+    return message.text || "";
+  };
 
   const handleSave = () => {
     if (nameInput.trim()) {
@@ -422,6 +437,56 @@ function ContactInfoPanel({
             </div>
           ) : (
             <p className="contact-info-no-media">No media shared yet</p>
+          )}
+        </div>
+
+            <div className="contact-info-section">
+          <div className="contact-info-media-header">
+            <FontAwesomeIcon icon={faStar} />
+
+            <span>Starred messages</span>
+
+            <span className="contact-info-media-count">
+              {starredMessages.length}
+            </span>
+          </div>
+
+          {starredMessages.length > 0 ? (
+            <div className="contact-info-starred-list">
+              {starredMessages.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="contact-info-starred-item"
+                  onClick={() => onGoToMessage?.(m.id)}
+                >
+                  {m.imageUrl && (
+                    <img
+                      src={m.imageUrl}
+                      alt="Starred media"
+                      className="contact-info-starred-thumb"
+                    />
+                  )}
+
+                  <div className="contact-info-starred-text">
+                    <p>{getStarredPreview(m)}</p>
+
+                    <span>
+                      {m.createdAt?.toDate
+                        ? m.createdAt.toDate().toLocaleString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            day: "2-digit",
+                            month: "2-digit",
+                          })
+                        : ""}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="contact-info-no-media">No starred messages</p>
           )}
         </div>
       </div>
@@ -1277,7 +1342,14 @@ export function ChatWindow({
 
     onSend(text, replyTo);
   };
+  const scrollToMessage = (messageId) => {
+    const el = messageRefs.current[messageId];
 
+    el?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
   const renderAvatar = (image, name, alt) => {
     if (image) {
       return <img src={image} alt={alt} className="message-avatar-image" />;
@@ -1760,6 +1832,11 @@ export function ChatWindow({
             onSearch={() => {
               setShowContactInfo(false);
               setShowSearch(true);
+            }}
+
+              onGoToMessage={(messageId) => {
+              setShowContactInfo(false);
+              scrollToMessage(messageId);
             }}
           />
         ))}

@@ -1320,6 +1320,7 @@ font-size: 14px;
 .contact-info-media-grid{
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .contact-info-media-thumb{
@@ -4382,4 +4383,59 @@ right: 0;
 
 .chat-item-menu button.danger {
   color: #e53935;
+}
+
+.contact-info-starred-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info-starred-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.contact-info-starred-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.contact-info-starred-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.contact-info-starred-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contact-info-starred-text p {
+  margin: 0;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-info-starred-text span {
+  font-size: 12px;
+  color: #707991;
+}
+.name-field input[readonly],
+.phone-field input[readonly],
+.description-field input[readonly] {
+  cursor: default;
 }
