@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
+import { setupPresence } from "../services/presence";
 import {
   collection,
   onSnapshot,
@@ -49,9 +49,7 @@ export function Chat() {
   const { userId } = useParams();
   const navigate = useNavigate();
 
-  // =========================
-  // USERS / CHAT
-  // =========================
+ 
 
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -75,9 +73,7 @@ export function Chat() {
 
   const [contactNames, setContactNames] = useState({});
 
-  // =========================
-  // CALL
-  // =========================
+
 
   const [callState, setCallState] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -213,11 +209,17 @@ export function Chat() {
 
     return () => unsubscribe();
   }, []);
+useEffect(() => {
+  const user = auth.currentUser;
 
-  // =========================================================
-  // LOAD CONTACT NAMES / NICKNAMES
-  // =========================================================
+  if (!user) return;
 
+  const unsubscribePresence = setupPresence(user.uid);
+
+  return () => {
+    unsubscribePresence();
+  };
+}, []);
   useEffect(() => {
     let unsubscribeAuth = null;
 
@@ -1057,10 +1059,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // HEARTBEAT / ONLINE STATUS
-  // =========================================================
-
+ 
   useEffect(() => {
     const currentUser = auth.currentUser;
 
@@ -1134,10 +1133,7 @@ export function Chat() {
     };
   }, []);
 
-  // =========================================================
-  // CALL PARTICIPANTS
-  // =========================================================
-
+ 
   useEffect(() => {
     if (!callState) {
       setCallParticipants([]);
@@ -1194,9 +1190,7 @@ export function Chat() {
     return () => unsubscribe();
   }, [callState, users]);
 
-  // =========================================================
-  // CLEANUP PEER
-  // =========================================================
+ 
 
   const cleanupPeer = (uid) => {
     const pc =
@@ -1234,9 +1228,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // CLEANUP CALL
-  // =========================================================
+
 
   const cleanupCall = () => {
     Object.values(
@@ -1268,10 +1260,7 @@ export function Chat() {
     setShowParticipants(false);
   };
 
-  // =========================================================
-  // CALL PARTICIPANT
-  // =========================================================
-
+  
   const callParticipant = async (
     user
   ) => {
@@ -1389,10 +1378,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // MESH CONNECT
-  // =========================================================
-
+ 
   const meshConnectToUid = async (
     uid
   ) => {
@@ -1499,10 +1485,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // INCOMING CALLS
-  // =========================================================
-
+ 
   useEffect(() => {
     const currentUser =
       auth.currentUser;
@@ -1663,10 +1646,7 @@ export function Chat() {
     return () => unsubscribe();
   }, [users, callState]);
 
-  // =========================================================
-  // START CALL
-  // =========================================================
-
+ 
   const handleCall = async () => {
     if (
       !selectedUser ||
@@ -1779,10 +1759,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // ACCEPT CALL
-  // =========================================================
-
+  
   const handleAcceptCall = async () => {
     if (!incomingCall) {
       return;
@@ -1874,9 +1851,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // REJECT CALL
-  // =========================================================
+ 
 
   const handleRejectCall = async () => {
     if (!incomingCall) {
@@ -1897,9 +1872,7 @@ export function Chat() {
     }
   };
 
-  // =========================================================
-  // END CALL
-  // =========================================================
+  
 
   const handleEndCall = async () => {
     const uids = Object.keys(
@@ -1936,9 +1909,7 @@ export function Chat() {
     setIncomingCall(null);
   };
 
-  // =========================================================
-  // AVAILABLE CALL PARTICIPANTS
-  // =========================================================
+ 
 
   const availableParticipants =
     users.filter((user) => {
@@ -1960,10 +1931,7 @@ export function Chat() {
       );
     });
 
-  // =========================================================
-  // RETURN
-  // =========================================================
-
+ 
   return (
     <div className="container">
       <div className="list">

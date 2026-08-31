@@ -1,7 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { MessageInput } from "./MessageInput";
-import { auth, db } from "../firebase/firebase";
-
+import { auth, db, realtimeDb } from "../firebase/firebase";
+import {
+  ref,
+  onValue,
+} from "firebase/database";
 import {
   doc,
   onSnapshot,
@@ -861,7 +864,7 @@ export function ChatWindow({
   const currentUser = auth.currentUser;
 
   const [showMore, setShowMore] = useState(false);
-
+const [isSelectedUserOnline, setIsSelectedUserOnline] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
   const [chatSearch, setChatSearch] = useState("");
@@ -912,7 +915,41 @@ const isLoadingOlderRef = useRef(false);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMore]);
+useEffect(() => {
+  if (!selectedUser || selectedUser.isGroup) {
+    setIsSelectedUserOnline(false);
+    return;
+  }
 
+  const userId = selectedUser.uid || selectedUser.id;
+
+  if (!userId) {
+    setIsSelectedUserOnline(false);
+    return;
+  }
+
+  const presenceRef = ref(
+    realtimeDb,
+    `presence/${userId}`
+  );
+
+  const unsubscribe = onValue(
+    presenceRef,
+    (snapshot) => {
+      const data = snapshot.val();
+
+      setIsSelectedUserOnline(
+        data?.state === "online"
+      );
+    },
+    (error) => {
+      console.error("Presence listener error:", error);
+      setIsSelectedUserOnline(false);
+    }
+  );
+
+  return () => unsubscribe();
+}, [selectedUser]);
   useEffect(() => {
     const currentUser = auth.currentUser;
 
