@@ -41,6 +41,7 @@ import {
   faArrowLeft,
   faCamera,
   faCommentDots,
+  faFile,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getLastSeen = (timestamp) => {
@@ -313,8 +314,64 @@ function ContactInfoPanel({
   
  const currentUser = auth.currentUser;
 
-  const mediaMessages = messages.filter((m) => m.imageUrl);
-    const starredMessages = messages.filter((m) =>
+const [allMediaMessages, setAllMediaMessages] = useState([]);
+
+useEffect(() => {
+  if (!currentUser || !user || user.isGroup) {
+    setAllMediaMessages([]);
+    return;
+  }
+
+  const otherUserId = user.uid || user.id;
+
+  const sentQuery = query(
+    collection(db, "messages"),
+    where("senderId", "==", currentUser.uid),
+    where("receiverId", "==", otherUserId),
+  );
+
+  const receivedQuery = query(
+    collection(db, "messages"),
+    where("senderId", "==", otherUserId),
+    where("receiverId", "==", currentUser.uid),
+  );
+
+  let sentDocs = [];
+  let receivedDocs = [];
+
+  const mergeAndSet = () => {
+    const merged = [...sentDocs, ...receivedDocs].filter(
+      (m) => m.imageUrl || m.fileUrl,
+    );
+
+    merged.sort((a, b) => {
+      const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+      const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+      return aTime - bTime;
+    });
+
+    setAllMediaMessages(merged);
+  };
+
+  const unsubSent = onSnapshot(sentQuery, (snapshot) => {
+    sentDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    mergeAndSet();
+  });
+
+  const unsubReceived = onSnapshot(receivedQuery, (snapshot) => {
+    receivedDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    mergeAndSet();
+  });
+
+  return () => {
+    unsubSent();
+    unsubReceived();
+  };
+}, [currentUser, user]);
+
+const mediaMessages = allMediaMessages;
+
+const starredMessages = messages.filter((m) =>
     m.starredBy?.includes(currentUser?.uid),
   );
 
@@ -412,33 +469,46 @@ function ContactInfoPanel({
           </p>
         </div>
 
-        <div className="contact-info-section">
-          <div className="contact-info-media-header">
-            <FontAwesomeIcon icon={faImages} />
+<div className="contact-info-section">
+  <div className="contact-info-media-header">
+    <FontAwesomeIcon icon={faImages} />
 
-            <span>Media, links and docs</span>
+    <span>Media, links and docs</span>
 
-            <span className="contact-info-media-count">
-              {mediaMessages.length}
-            </span>
-          </div>
+    <span className="contact-info-media-count">
+      {mediaMessages.length}
+    </span>
+  </div>
 
-          {mediaMessages.length > 0 ? (
-            <div className="contact-info-media-grid">
-              {mediaMessages.map((m) => (
-                <img
-                  key={m.id}
-                  src={m.imageUrl}
-                  alt="Media"
-                  className="contact-info-media-thumb"
-                  onClick={() => window.open(m.imageUrl, "_blank")}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="contact-info-no-media">No media shared yet</p>
-          )}
-        </div>
+  {mediaMessages.length > 0 ? (
+    <div className="contact-info-media-grid">
+      {mediaMessages.map((m) =>
+        m.imageUrl ? (
+          <img
+            key={m.id}
+            src={m.imageUrl}
+            alt="Media"
+            className="contact-info-media-thumb"
+            onClick={() => window.open(m.imageUrl, "_blank")}
+          />
+         ) : (
+          <a
+            key={m.id}
+            href={m.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="contact-info-media-thumb contact-info-file-thumb"
+          >
+            <FontAwesomeIcon icon={faFile} />
+            <span>{m.fileName || "File"}</span>
+          </a>
+        ),
+      )}
+    </div>
+  ) : (
+    <p className="contact-info-no-media">No media, links or docs</p>
+  )}
+</div>
 
             <div className="contact-info-section">
           <div className="contact-info-media-header">
